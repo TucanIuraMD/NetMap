@@ -1,2 +1,15 @@
 # NetMap
-NetMap is an open-source infrastructure discovery, network monitoring and topology platform.
+
+Modern Infrastructure Discovery Platform
+
+Status
+
+🚧 Under Development
+
+Documentation
+
+docs/
+
+License
+
+MIT
