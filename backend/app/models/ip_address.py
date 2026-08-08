@@ -7,9 +7,9 @@ class IPAddress(db.Model):
     __tablename__ = "ip_addresses"
 
     id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(
+    interface_id = db.Column(
         db.Integer,
-        db.ForeignKey("devices.id"),
+        db.ForeignKey("interfaces.id"),
         nullable=False,
     )
     address = db.Column(db.String(45), nullable=False)
@@ -24,9 +24,9 @@ class IPAddress(db.Model):
         onupdate=datetime.utcnow,
     )
 
-    device = db.relationship(
-        "Device",
-        backref=db.backref("ip_addresses", lazy=True),
+    interface = db.relationship(
+        "Interface",
+        back_populates="ip_addresses",
     )
 
     def __repr__(self) -> str:

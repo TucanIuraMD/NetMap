@@ -12,12 +12,22 @@ class Site(db.Model):
     location = db.Column(db.String(200))
     contact = db.Column(db.String(100))
     is_active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+    )
+
+    networks = db.relationship(
+        "Network",
+        back_populates="site",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

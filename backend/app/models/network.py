@@ -7,16 +7,24 @@ class Network(db.Model):
     __tablename__ = "networks"
 
     id = db.Column(db.Integer, primary_key=True)
+
     site_id = db.Column(
         db.Integer,
         db.ForeignKey("sites.id"),
         nullable=False,
     )
+
     name = db.Column(db.String(100), nullable=False)
     cidr = db.Column(db.String(43), nullable=False)
     description = db.Column(db.Text)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
@@ -26,7 +34,13 @@ class Network(db.Model):
 
     site = db.relationship(
         "Site",
-        backref=db.backref("networks", lazy=True),
+        back_populates="networks",
+    )
+
+    devices = db.relationship(
+        "Device",
+        back_populates="network",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

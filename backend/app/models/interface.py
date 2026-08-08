@@ -3,20 +3,22 @@ from datetime import datetime
 from ..extensions import db
 
 
-class Device(db.Model):
-    __tablename__ = "devices"
+class Interface(db.Model):
+    __tablename__ = "interfaces"
 
     id = db.Column(db.Integer, primary_key=True)
 
-    network_id = db.Column(
+    device_id = db.Column(
         db.Integer,
-        db.ForeignKey("networks.id"),
+        db.ForeignKey("devices.id"),
         nullable=False,
     )
 
     name = db.Column(db.String(100), nullable=False)
-    hostname = db.Column(db.String(255))
-    device_type = db.Column(db.String(50))
+    mac_address = db.Column(db.String(17))
+    speed = db.Column(db.Integer)
+    mtu = db.Column(db.Integer)
+    interface_type = db.Column(db.String(50))
     description = db.Column(db.Text)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
@@ -33,16 +35,16 @@ class Device(db.Model):
         onupdate=datetime.utcnow,
     )
 
-    network = db.relationship(
-        "Network",
-        back_populates="devices",
+    device = db.relationship(
+        "Device",
+        back_populates="interfaces",
     )
 
-    interfaces = db.relationship(
-        "Interface",
-        back_populates="device",
+    ip_addresses = db.relationship(
+        "IPAddress",
+        back_populates="interface",
         cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
-        return f"<Device {self.name}>"
+        return f"<Interface {self.name}>"
