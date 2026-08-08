@@ -43,6 +43,11 @@ class Device(db.Model):
         back_populates="device",
         cascade="all, delete-orphan",
     )
+    ports = db.relationship(
+        "Port",
+        back_populates="device",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Device {self.name}>"
