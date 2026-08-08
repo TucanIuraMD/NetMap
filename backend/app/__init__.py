@@ -5,6 +5,7 @@ from .extensions import db, migrate
 from .models.site import Site
 from .models.network import Network
 from .models.device import Device
+from .models.interface import Interface
 from .models.ip_address import IPAddress
 
 def create_app() -> Flask:
