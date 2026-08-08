@@ -4,6 +4,7 @@ from config import Config
 from .extensions import db, migrate
 from .models.site import Site
 from .models.network import Network
+from .models.device import Device
 
 def create_app() -> Flask:
     app = Flask(__name__)
