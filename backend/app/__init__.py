@@ -3,7 +3,7 @@ from flask import Flask
 from config import Config
 from .extensions import db, migrate
 from .models.site import Site
-
+from .models.network import Network
 
 def create_app() -> Flask:
     app = Flask(__name__)
