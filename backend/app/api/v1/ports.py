@@ -12,6 +12,33 @@ ports_bp = Blueprint(
     url_prefix="/ports",
 )
 
+def get_web_url(port: Port) -> str | None:
+    if port.protocol.lower() != "tcp":
+        return None
+
+    if port.web_scheme not in {"http", "https"}:
+        return None
+
+    ip_address = None
+
+    for interface in port.device.interfaces:
+        primary = next(
+            (
+                ip
+                for ip in interface.ip_addresses
+                if ip.is_primary
+            ),
+            None,
+        )
+
+        if primary is not None:
+            ip_address = primary.address
+            break
+
+    if ip_address is None:
+        return None
+
+    return f"{port.web_scheme}://{ip_address}:{port.port_number}"
 
 def port_to_dict(port: Port) -> dict:
     return {
@@ -21,6 +48,9 @@ def port_to_dict(port: Port) -> dict:
         "port_number": port.port_number,
         "protocol": port.protocol,
         "status": port.status,
+        "display_name": port.display_name,
+        "web_scheme": port.web_scheme,
+        "web_url": get_web_url(port),
         "description": port.description,
         "created_at": (
             port.created_at.isoformat()
@@ -97,6 +127,8 @@ def create_port():
         port_number=port_number,
         protocol=protocol,
         status=data.get("status", "open"),
+        display_name=data.get("display_name"),
+        web_scheme=data.get("web_scheme"),
         description=data.get("description"),
     )
 
@@ -161,6 +193,26 @@ def update_port(port_id: int):
 
     if "status" in data:
         port.status = data["status"]
+
+    if "display_name" in data:
+        display_name = data["display_name"]
+
+        if display_name is not None and not display_name.strip():
+            return jsonify({
+                "error": "display_name cannot be empty"
+            }), 400
+
+        port.display_name = display_name
+
+    if "web_scheme" in data:
+        web_scheme = data["web_scheme"]
+
+        if web_scheme not in {None, "http", "https"}:
+            return jsonify({
+                "error": "web_scheme must be http, https, or null"
+            }), 400
+
+        port.web_scheme = web_scheme
 
     if "description" in data:
         port.description = data["description"]

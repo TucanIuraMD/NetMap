@@ -15,6 +15,7 @@ class Device(db.Model):
     )
 
     name = db.Column(db.String(100), nullable=False)
+    display_name = db.Column(db.String(100))
     hostname = db.Column(db.String(255))
     device_type = db.Column(db.String(50))
     description = db.Column(db.Text)
@@ -46,6 +47,20 @@ class Device(db.Model):
     ports = db.relationship(
         "Port",
         back_populates="device",
+        cascade="all, delete-orphan",
+    )
+
+    source_connections = db.relationship(
+        "Connection",
+        foreign_keys="Connection.source_device_id",
+        back_populates="source_device",
+        cascade="all, delete-orphan",
+    )
+
+    target_connections = db.relationship(
+        "Connection",
+        foreign_keys="Connection.target_device_id",
+        back_populates="target_device",
         cascade="all, delete-orphan",
     )
 

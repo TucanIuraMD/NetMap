@@ -10,6 +10,7 @@ from .models.interface import Interface
 from .models.ip_address import IPAddress
 from .models.port import Port
 from .models.service import Service
+from .models.connection import Connection
 
 from .api.v1 import api_v1
 

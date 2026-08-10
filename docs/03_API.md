@@ -389,7 +389,60 @@ DELETE
 
 ---
 
-# 16. Discovery
+# 16. Connections
+
+GET
+
+/connections
+
+Return all device connections.
+
+---
+
+GET
+
+/connections/{id}
+
+Return one connection.
+
+---
+
+POST
+
+/connections
+
+Create a connection between two devices.
+
+Request example
+
+```json
+{
+    "source_device_id": 1,
+    "target_device_id": 3,
+    "connection_type": "network",
+    "source_port_id": null,
+    "target_port_id": null,
+    "description": "Network connection"
+}
+PUT
+/connections/{id}
+Update a connection.
+DELETE
+/connections/{id}
+Delete a connection.
+Connection fields
+source_device_id
+target_device_id
+connection_type
+source_port_id
+target_port_id
+description
+is_active
+Connections may optionally reference source and target ports.
+Deleting a device also removes its associated connections.
+```bash
+
+# 17. Discovery
 
 POST
 
@@ -423,7 +476,7 @@ Latest results.
 
 ---
 
-# 17. Monitoring
+# 18. Monitoring
 
 POST
 
@@ -449,7 +502,7 @@ GET
 
 ---
 
-# 18. History
+# 19. History
 
 GET
 
@@ -473,7 +526,7 @@ Example
 
 ---
 
-# 19. Settings
+# 20. Settings
 
 GET
 
@@ -485,7 +538,7 @@ PUT
 
 ---
 
-# 20. Search
+# 21. Search
 
 Universal search.
 
@@ -505,7 +558,7 @@ Services
 
 ---
 
-# 21. Pagination
+# 22. Pagination
 
 Supported by all list endpoints.
 
@@ -525,7 +578,7 @@ Maximum
 
 ---
 
-# 22. Filtering
+# 23. Filtering
 
 Examples
 
@@ -545,7 +598,7 @@ Multiple filters are allowed.
 
 ---
 
-# 23. Sorting
+# 24. Sorting
 
 Examples
 
@@ -561,7 +614,7 @@ Descending
 
 ---
 
-# 24. API Versioning
+# 25. API Versioning
 
 Current
 
@@ -575,7 +628,7 @@ Older versions remain supported whenever possible.
 
 ---
 
-# 25. Error Codes
+# 26. Error Codes
 
 DEVICE_NOT_FOUND
 
@@ -599,7 +652,7 @@ INTERNAL_ERROR
 
 ---
 
-# 26. Performance
+# 27. Performance
 
 All list endpoints must support
 
@@ -615,7 +668,7 @@ No endpoint may return unlimited data.
 
 ---
 
-# 27. Logging
+# 28. Logging
 
 Every API request is logged.
 
@@ -635,7 +688,7 @@ IP Address
 
 ---
 
-# 28. Future API
+# 29. Future API
 
 Reserved for Version 2
 
@@ -653,7 +706,7 @@ Reserved for Version 2
 
 ---
 
-# 29. API Philosophy
+# 30. API Philosophy
 
 The API is the public interface of NetMap.
 

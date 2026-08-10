@@ -8,19 +8,21 @@
 
 # 1. Vision
 
-NetMap is a modern network discovery and infrastructure monitoring platform.
+NetMap is a network inventory and infrastructure access platform.
 
-The goal is not simply to scan IP addresses.
+The primary goal is to maintain a clear, practical inventory of network devices and provide a fast interface for accessing their web services.
 
-The goal is to build a complete model of the infrastructure:
+NetMap must:
 
-- discover
-- identify
-- monitor
-- visualize
-- document
-
-every device inside one or multiple networks.
+- discover devices
+- identify devices and their network information
+- allow users to rename devices and ports
+- maintain interfaces, IP addresses and ports
+- provide clickable access to web services
+- monitor device availability
+- detect newly appearing devices
+- allow connections between devices to be documented
+- visualize the infrastructure
 
 NetMap must be lightweight, modular and easy to deploy.
 
@@ -28,15 +30,21 @@ NetMap must be lightweight, modular and easy to deploy.
 
 # 2. Project Goals
 
-Version 1.0 includes only four major modules.
+The primary product functions are:
 
-1. Network Discovery
+1. Device Inventory
 
-2. Monitoring
+2. Network Discovery
 
-3. Topology
+3. Quick Web Service Access
 
-4. Infrastructure Discovery
+4. Availability Monitoring
+
+5. Device Connections
+
+6. Topology and Visualization
+
+Infrastructure Discovery integrations are an extension of the inventory.
 
 Everything else belongs to Version 2 or later.
 
@@ -124,7 +132,26 @@ The architecture must support unlimited future sites.
 
 # 5. Main Modules
 
-## 5.1 Network Discovery
+## 5.1 Device Inventory
+
+The inventory is the core of NetMap.
+
+It stores:
+
+- Sites
+- Networks
+- Devices
+- Interfaces
+- IP addresses
+- Ports
+
+Users can assign display names to devices and ports without changing discovered technical identifiers.
+
+Ports may contain web access settings and a generated web URL.
+
+---
+
+## 5.2 Network Discovery
 
 Responsible for discovering devices.
 
@@ -151,7 +178,7 @@ Drivers return only discovery results.
 
 ---
 
-## 5.2 Monitoring
+## 5.3 Monitoring
 
 Responsible for monitoring devices.
 
@@ -166,7 +193,7 @@ Functions
 
 ---
 
-## 5.3 Topology
+## 5.4 Topology
 
 Responsible for visualization.
 
@@ -184,7 +211,7 @@ Topology is automatically rebuilt after infrastructure changes.
 
 ---
 
-## 5.4 Infrastructure Discovery
+## 5.5 Infrastructure Discovery
 
 Supported integrations
 
@@ -439,19 +466,9 @@ UDP
 
 ## Service
 
-HTTP
+Service records may be associated with ports.
 
-HTTPS
-
-SSH
-
-MQTT
-
-SMB
-
-FTP
-
-DNS
+Automatic Service Detection is NOT a required project function.
 
 ---
 
@@ -750,27 +767,29 @@ Repositories never know about Flask.
 
 # 20. Version 1 Scope
 
-Included
+Included / planned core functions
 
-✅ Network Discovery
+✅ Device inventory
 
-✅ Monitoring
+✅ Network discovery
 
-✅ Dashboard
+✅ Interface and IP inventory
 
-✅ Device Database
+✅ Port inventory
 
-✅ History
+✅ Device and port display names
 
-✅ Topology
+✅ Quick web-service access
 
-✅ Docker
+⏳ Availability monitoring
 
-✅ Proxmox
+⏳ New-device detection
 
-✅ MikroTik
+⏳ Device connections
 
-✅ Home Assistant
+⏳ Topology visualization
+
+⏳ Infrastructure integrations
 
 ---
 
@@ -832,7 +851,7 @@ NetMap is **not** a monitoring-only solution.
 
 NetMap is an Infrastructure Discovery Platform.
 
-The source of truth is the infrastructure itself.
+The source of truth is the infrastructure inventory maintained by NetMap.
 
 The application continuously discovers, merges, monitors and visualizes the network.
 

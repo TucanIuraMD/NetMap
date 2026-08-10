@@ -9,6 +9,7 @@ from .interfaces import interfaces_bp
 from .ip_addresses import ip_addresses_bp
 from .ports import ports_bp
 from .services import services_bp
+from .connections import connections_bp
 
 api_v1.register_blueprint(sites_bp)
 api_v1.register_blueprint(networks_bp)
@@ -17,3 +18,4 @@ api_v1.register_blueprint(interfaces_bp)
 api_v1.register_blueprint(ip_addresses_bp)
 api_v1.register_blueprint(ports_bp)
 api_v1.register_blueprint(services_bp)
+api_v1.register_blueprint(connections_bp)

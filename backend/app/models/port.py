@@ -22,6 +22,8 @@ class Port(db.Model):
     port_number = db.Column(db.Integer, nullable=False)
     protocol = db.Column(db.String(10), nullable=False)
     status = db.Column(db.String(20), nullable=False, default="open")
+    display_name = db.Column(db.String(100))
+    web_scheme = db.Column(db.String(10))
     description = db.Column(db.Text)
 
     created_at = db.Column(

@@ -13,6 +13,7 @@ def device_to_dict(device: Device) -> dict:
         "id": device.id,
         "network_id": device.network_id,
         "name": device.name,
+        "display_name": device.display_name,
         "hostname": device.hostname,
         "device_type": device.device_type,
         "description": device.description,
@@ -53,6 +54,8 @@ def create_device():
 
     network_id = data.get("network_id")
     name = data.get("name")
+
+    display_name=data.get("display_name"),
 
     if network_id is None:
         return jsonify({"error": "network_id is required"}), 400
@@ -109,6 +112,16 @@ def update_device(device_id: int):
             return jsonify({"error": "Network not found"}), 404
 
         device.network_id = network_id
+
+    if "display_name" in data:
+        display_name = data["display_name"]
+
+        if display_name is not None and not display_name.strip():
+            return jsonify({
+                "error": "display_name cannot be empty"
+            }), 400
+
+        device.display_name = display_name
 
     if "name" in data:
         name = data["name"]
