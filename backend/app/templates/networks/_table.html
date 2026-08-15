@@ -1,0 +1,55 @@
+{% import "_macros.html" as macros %}
+
+{% if networks %}
+<div class="table-responsive">
+  <table class="table table-hover nm-table">
+    <thead>
+      <tr>
+        <th>Name</th><th>CIDR</th><th>Site</th><th>Status</th><th>Devices</th><th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for network in networks %}
+      <tr class="nm-table-row-clickable"
+          onclick="if(!event.target.closest('.nm-row-actions')) window.location='{{ url_for('web.networks.network_details', network_id=network.id) }}'">
+        <td class="fw-semibold">{{ network.name }}</td>
+        <td class="nm-mono">{{ network.cidr }}</td>
+        <td>{{ network.site_name }}</td>
+        <td>{{ macros.active_badge(network.is_active) }}</td>
+        <td>{{ network.active_device_count }} / {{ network.device_count }}</td>
+        <td class="text-end nm-row-actions">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button class="dropdown-item"
+                        hx-get="{{ url_for('web.networks.edit_network_form', network_id=network.id) }}"
+                        hx-target="#nm-modal-content">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button class="dropdown-item text-danger"
+                        hx-delete="{{ url_for('web.networks.delete_network', network_id=network.id) }}"
+                        hx-target="#networks-table-wrapper"
+                        data-nm-confirm="Удалить сеть «{{ network.name }}»? Все устройства этой сети тоже будут удалены.">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="nm-empty-state">
+  <i class="bi bi-diagram-2 fs-1"></i>
+  <p class="mt-2 mb-0">Сети пока не созданы.</p>
+</div>
+{% endif %}

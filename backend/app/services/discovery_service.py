@@ -25,6 +25,15 @@ class DiscoveryService:
             device = self._sync_host(host)
             devices.append(device)
 
+        discovered_ip_addresses = {
+            host.ip_address
+            for host in hosts
+        }
+
+        self._mark_missing_devices_inactive(
+            discovered_ip_addresses
+        )
+
         db.session.commit()
 
         return devices
@@ -160,3 +169,25 @@ class DiscoveryService:
                 db.session.add(port)
             else:
                 port.status = "open"
+
+    def _mark_missing_devices_inactive(
+        self,
+        discovered_ip_addresses: set[str],
+    ) -> None:
+        devices = (
+            Device.query
+            .filter_by(network_id=self.network.id)
+            .all()
+        )
+
+        for device in devices:
+            ip_addresses = {
+                ip.address
+                for interface in device.interfaces
+                for ip in interface.ip_addresses
+            }
+
+            if ip_addresses and ip_addresses.isdisjoint(
+                discovered_ip_addresses
+            ):
+                device.is_active = False

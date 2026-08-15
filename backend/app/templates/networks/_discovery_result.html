@@ -1,0 +1,24 @@
+{% if error %}
+<div class="alert alert-danger py-2 mb-0">
+  <i class="bi bi-exclamation-triangle"></i> Discovery failed: {{ error }}
+</div>
+{% elif result %}
+<div class="alert alert-success py-2 mb-0">
+  <i class="bi bi-check-circle"></i>
+  Discovery завершён: найдено хостов — <strong>{{ result.hosts_found }}</strong>,
+  синхронизировано устройств — <strong>{{ result.devices_synced }}</strong>.
+</div>
+{% if result.devices %}
+<ul class="list-unstyled small mt-2 mb-0">
+  {% for d in result.devices %}
+  <li><i class="bi bi-hdd-network text-body-secondary"></i> {{ d.hostname or d.name }} ({{ d.device_type }})</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+
+{% if devices is defined %}
+<div id="network-devices-wrapper" hx-swap-oob="true">
+  {% include "networks/_devices_table.html" %}
+</div>
+{% endif %}

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+
+{% block title %}{{ display }} — NetMap{% endblock %}
+{% block page_title %}{{ display }}{% endblock %}
+{% block breadcrumb %}
+<div class="nm-breadcrumb">
+  <a href="{{ url_for('web.devices.list_devices') }}" class="text-reset">Devices</a> / {{ display }}
+</div>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="btn-group btn-group-sm">
+  <button type="button" class="btn btn-outline-secondary"
+          hx-get="{{ url_for('web.devices.edit_device_form', device_id=device.id) }}"
+          hx-target="#nm-modal-content">
+    <i class="bi bi-pencil"></i> Edit
+  </button>
+  <button type="button" class="btn btn-outline-danger" id="delete-device-btn">
+    <i class="bi bi-trash"></i> Delete
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  {{ macros.active_badge(device.is_active) }}
+  <span class="text-body-secondary ms-2">{{ device.device_type or 'unknown type' }}</span>
+</div>
+
+<ul class="nav nav-tabs" id="deviceTabs" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button">Overview</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-network" type="button">Network</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ports" type="button">Ports ({{ ports|length }})</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-connections" type="button">Connections ({{ connections|length }})</button></li>
+</ul>
+
+<div class="tab-content border border-top-0 rounded-bottom p-3 bg-body-tertiary">
+
+  <div class="tab-pane fade show active" id="tab-overview">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Name</dt><dd class="col-sm-9 nm-mono">{{ device.name }}</dd>
+      <dt class="col-sm-3">Display Name</dt><dd class="col-sm-9">{{ device.display_name or '—' }}</dd>
+      <dt class="col-sm-3">Hostname</dt><dd class="col-sm-9 nm-mono">{{ device.hostname or '—' }}</dd>
+      <dt class="col-sm-3">Device Type</dt><dd class="col-sm-9">{{ device.device_type or '—' }}</dd>
+      <dt class="col-sm-3">Network</dt>
+      <dd class="col-sm-9">
+        {% if network %}
+        <a href="{{ url_for('web.networks.network_details', network_id=network.id) }}">{{ network.name }}</a>
+        {% else %}—{% endif %}
+      </dd>
+      <dt class="col-sm-3">Description</dt><dd class="col-sm-9">{{ device.description or '—' }}</dd>
+      <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ macros.active_badge(device.is_active) }}</dd>
+      <dt class="col-sm-3">Updated</dt><dd class="col-sm-9 text-body-secondary">{{ device.updated_at or '—' }}</dd>
+    </dl>
+  </div>
+
+  <div class="tab-pane fade" id="tab-network">
+    <h6>Interfaces</h6>
+    {% if interfaces %}
+    <table class="table table-sm nm-table mb-4">
+      <thead><tr><th>Name</th><th>MAC</th><th>Type</th><th>Speed</th><th>MTU</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for iface in interfaces %}
+        <tr>
+          <td>{{ iface.name }}</td>
+          <td class="nm-mono">{{ iface.mac_address or '—' }}</td>
+          <td>{{ iface.interface_type or '—' }}</td>
+          <td>{{ iface.speed or '—' }}</td>
+          <td>{{ iface.mtu or '—' }}</td>
+          <td>{{ macros.active_badge(iface.is_active) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-body-secondary">Интерфейсы не найдены.</p>
+    {% endif %}
+
+    <h6>IP Addresses</h6>
+    {% if ip_addresses %}
+    <table class="table table-sm nm-table">
+      <thead><tr><th>Address</th><th>Version</th><th>Primary</th><th>Description</th></tr></thead>
+      <tbody>
+        {% for ip in ip_addresses %}
+        <tr>
+          <td class="nm-mono">{{ ip.address }}</td>
+          <td>IPv{{ ip.version }}</td>
+          <td>{% if ip.is_primary %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+          <td>{{ ip.description or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-body-secondary">IP-адреса не найдены.</p>
+    {% endif %}
+  </div>
+
+  <div class="tab-pane fade" id="tab-ports">
+    {% if ports %}
+    <table class="table table-sm nm-table">
+      <thead><tr><th>Port</th><th>Protocol</th><th>Status</th><th>Display Name</th><th>Web Access</th></tr></thead>
+      <tbody>
+        {% for port in ports %}
+        <tr>
+          <td class="nm-mono">{{ port.port_number }}</td>
+          <td>{{ port.protocol }}</td>
+          <td>{{ macros.port_status_badge(port.status) }}</td>
+          <td>{{ port.display_name or '—' }}</td>
+          <td>
+            {% if port.web_url %}
+            <a href="{{ port.web_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-box-arrow-up-right"></i> Open
+            </a>
+            {% else %}
+            <span class="text-body-secondary small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-body-secondary">Порты не найдены.</p>
+    {% endif %}
+  </div>
+
+  <div class="tab-pane fade" id="tab-connections">
+    <div class="d-flex justify-content-end mb-2">
+      <a href="{{ url_for('web.connections.list_connections') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-shuffle"></i> Manage connections
+      </a>
+    </div>
+    {% if connections %}
+    <table class="table table-sm nm-table">
+      <thead><tr><th>Connection</th><th>Type</th><th>Description</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for c in connections %}
+        <tr>
+          <td class="nm-connection-chain">
+            <span class="{{ 'fw-semibold' if c.source_device_id == device.id }}">{{ c.source_name }}</span>
+            <i class="bi bi-arrow-right"></i>
+            <span class="{{ 'fw-semibold' if c.target_device_id == device.id }}">{{ c.target_name }}</span>
+          </td>
+          <td>{{ c.connection_type }}</td>
+          <td>{{ c.description or '—' }}</td>
+          <td>{{ macros.active_badge(c.is_active) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-body-secondary">Соединения не найдены.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById("delete-device-btn").addEventListener("click", function () {
+  if (!window.confirm("Удалить устройство? Связанные connections тоже будут удалены.")) {
+    return;
+  }
+  fetch("{{ url_for('web.devices.delete_device', device_id=device.id) }}", {
+    method: "DELETE",
+    headers: { "HX-Request": "true" },
+  }).then(function (response) {
+    if (response.ok) {
+      window.location.href = "{{ url_for('web.devices.list_devices') }}";
+    } else {
+      window.showToast("Не удалось удалить устройство", "danger");
+    }
+  });
+});
+</script>
+{% endblock %}

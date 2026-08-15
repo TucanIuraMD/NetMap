@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+
+{% block title %}Discovery — NetMap{% endblock %}
+{% block page_title %}Discovery{% endblock %}
+
+{% block content %}
+<p class="text-body-secondary">
+  Discovery сканирует подсеть каждой сети и синхронизирует найденные хосты с инвентарём Devices.
+  Запрос выполняется синхронно — кнопка блокируется на время сканирования.
+</p>
+
+{% if networks %}
+<div class="table-responsive">
+  <table class="table nm-table align-middle">
+    <thead>
+      <tr><th>Network</th><th>CIDR</th><th>Site</th><th>Status</th><th style="width: 40%;">Action / Result</th></tr>
+    </thead>
+    <tbody>
+      {% for network in networks %}
+      <tr>
+        <td>
+          <a href="{{ url_for('web.networks.network_details', network_id=network.id) }}">{{ network.name }}</a>
+        </td>
+        <td class="nm-mono">{{ network.cidr }}</td>
+        <td>{{ network.site_name }}</td>
+        <td>{{ macros.active_badge(network.is_active) }}</td>
+        <td>
+          <button type="button" class="btn btn-sm btn-outline-primary"
+                  {% if not network.is_active %}disabled title="Network is inactive"{% endif %}
+                  hx-post="{{ url_for('web.networks.discover_network', network_id=network.id) }}"
+                  hx-target="#discovery-result-{{ network.id }}"
+                  hx-indicator="#discover-spinner-{{ network.id }}">
+            <span id="discover-spinner-{{ network.id }}" class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+            <i class="bi bi-search"></i> Discover
+          </button>
+          <div id="discovery-result-{{ network.id }}" class="mt-2"></div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="nm-empty-state">
+  <i class="bi bi-search fs-1"></i>
+  <p class="mt-2 mb-0">Сначала создайте хотя бы одну сеть на странице Networks.</p>
+</div>
+{% endif %}
+{% endblock %}

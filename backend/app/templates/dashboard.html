@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+
+{% block title %}Dashboard — NetMap{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block topbar_actions %}
+<div class="btn-group btn-group-sm">
+  <a href="{{ url_for('web.discovery.discovery_index') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-search"></i> Discover Network
+  </a>
+  <button type="button" class="btn btn-outline-secondary"
+          hx-get="{{ url_for('web.devices.new_device_form') }}"
+          hx-target="#nm-modal-content">
+    <i class="bi bi-plus-lg"></i> Add Device
+  </button>
+  <button type="button" class="btn btn-outline-secondary"
+          hx-get="{{ url_for('web.networks.new_network_form') }}"
+          hx-target="#nm-modal-content">
+    <i class="bi bi-plus-lg"></i> Add Network
+  </button>
+  <a href="{{ url_for('web.topology.topology_view') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-share"></i> View Topology
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+  <div class="col">
+    <div class="nm-stat-card">
+      <div class="nm-stat-value">{{ stats.sites }}</div>
+      <div class="nm-stat-label">Sites</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="nm-stat-card">
+      <div class="nm-stat-value">{{ stats.networks }}</div>
+      <div class="nm-stat-label">Networks</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="nm-stat-card">
+      <div class="nm-stat-value">{{ stats.devices }}</div>
+      <div class="nm-stat-label">Devices ({{ stats.active_devices }} active)</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="nm-stat-card">
+      <div class="nm-stat-value">{{ stats.ports }}</div>
+      <div class="nm-stat-label">Ports</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="nm-stat-card">
+      <div class="nm-stat-value">{{ stats.connections }}</div>
+      <div class="nm-stat-label">Connections</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="nm-stat-card">
+      <div class="nm-stat-value">{{ stats.inactive_devices }}</div>
+      <div class="nm-stat-label">Inactive devices</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Недавно изменённые устройства</div>
+      <ul class="list-group list-group-flush">
+        {% for device in recent_devices %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}">
+            {{ device.display }}
+          </a>
+          <span class="text-body-secondary small">{{ device.network_name }}</span>
+        </li>
+        {% else %}
+        <li class="list-group-item nm-empty-state">Устройств пока нет</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Inactive устройства</div>
+      <ul class="list-group list-group-flush">
+        {% for device in inactive_devices %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}">
+            {{ device.display }}
+          </a>
+          {{ macros.active_badge(device.is_active) }}
+        </li>
+        {% else %}
+        <li class="list-group-item nm-empty-state">Все устройства активны</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

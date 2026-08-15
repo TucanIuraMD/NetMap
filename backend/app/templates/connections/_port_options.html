@@ -1,0 +1,6 @@
+<option value="">— no port —</option>
+{% for port in ports %}
+<option value="{{ port.id }}" {{ 'selected' if selected_id and selected_id == port.id }}>
+  {{ port.port_number }}/{{ port.protocol }} {{ '(' + port.display_name + ')' if port.display_name else '' }}
+</option>
+{% endfor %}

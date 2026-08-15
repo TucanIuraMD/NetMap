@@ -1,0 +1,100 @@
+{% set is_edit = device is not none and device.get('id') is not none %}
+
+<div class="modal-header">
+  <h5 class="modal-title">{{ 'Edit Device' if is_edit else 'Add Device' }}</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+{# NOTE (bugfix): the Edit form can be opened from two different pages —
+   Devices List (/devices, has #devices-table-wrapper in the DOM) and
+   Device Details (/devices/<id>, which does NOT have that element).
+   Hard-coding hx-target="#devices-table-wrapper" made Save silently
+   no-op on Device Details, because HTMX aborts the request entirely
+   when hx-target does not resolve to an existing element on the page.
+   Fix: target #nm-modal-content instead — it is defined once in
+   base.html and present on every page. On success the server returns
+   only an out-of-band <div id="devices-table-wrapper" hx-swap-oob>
+   block, which updates the visible table when present (List page)
+   and is harmlessly ignored when absent (Details page); the modal
+   then closes via the existing "device-saved" HX-Trigger listener.
+   On validation error the server still re-renders this same form
+   partial straight into #nm-modal-content, exactly as before.
+   Create (POST) is left untouched, as requested. #}
+<form hx-{{ 'put' if is_edit else 'post' }}="{{ url_for('web.devices.update_device', device_id=device.id) if is_edit else url_for('web.devices.create_device') }}"
+      {% if is_edit %}
+      hx-target="#nm-modal-content"
+      hx-swap="innerHTML"
+      {% else %}
+      hx-target="#devices-table-wrapper"
+      hx-swap="innerHTML"
+      {% endif %}>
+  <div class="modal-body">
+    {% if error %}
+    <div class="alert alert-danger py-2">{{ error }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label">Name *</label>
+      <input type="text" name="name" class="form-control" required
+             value="{{ device.name if device else '' }}"
+             placeholder="Технический идентификатор (напр. core-sw-01)">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Display Name</label>
+      <input type="text" name="display_name" class="form-control"
+             value="{{ device.display_name if device and device.display_name else '' }}"
+             placeholder="Пользовательское имя (необязательно)">
+      <div class="form-text">Не изменяется автоматически при Discovery.</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Hostname</label>
+      <input type="text" name="hostname" class="form-control"
+             value="{{ device.hostname if device and device.hostname else '' }}">
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Network *</label>
+        <select name="network_id" class="form-select" required>
+          <option value="">Select network…</option>
+          {% for network in networks %}
+          <option value="{{ network.id }}"
+            {{ 'selected' if device and device.network_id == network.id }}>
+            {{ network.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Device Type</label>
+        <select name="device_type" class="form-select">
+          <option value="">—</option>
+          {% for t in device_types %}
+          <option value="{{ t }}" {{ 'selected' if device and device.device_type == t }}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Description</label>
+      <textarea name="description" class="form-control" rows="2">{{ device.description if device and device.description else '' }}</textarea>
+    </div>
+
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="device-is-active"
+             {{ 'checked' if device is none or device.is_active }}>
+      <label class="form-check-label" for="device-is-active">Active</label>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary">
+      <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+      Save
+    </button>
+  </div>
+</form>

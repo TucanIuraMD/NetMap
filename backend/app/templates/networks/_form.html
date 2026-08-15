@@ -1,0 +1,71 @@
+{% set is_edit = network is not none and network.get('id') is not none %}
+
+<div class="modal-header">
+  <h5 class="modal-title">{{ 'Edit Network' if is_edit else 'Add Network' }}</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+{# NOTE (bugfix): same issue as devices/_form.html — Edit can be opened
+   from Network Details (/networks/<id>), which has no
+   #networks-table-wrapper element, so a hard-coded hx-target there
+   made HTMX abort the Save request before it was ever sent.
+   Fix: target #nm-modal-content (present on every page); on success
+   the server returns only an OOB #networks-table-wrapper block. #}
+<form hx-{{ 'put' if is_edit else 'post' }}="{{ url_for('web.networks.update_network', network_id=network.id) if is_edit else url_for('web.networks.create_network') }}"
+      {% if is_edit %}
+      hx-target="#nm-modal-content"
+      hx-swap="innerHTML"
+      {% else %}
+      hx-target="#networks-table-wrapper"
+      hx-swap="innerHTML"
+      {% endif %}>
+  <div class="modal-body">
+    {% if error %}
+    <div class="alert alert-danger py-2">{{ error }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label">Name *</label>
+      <input type="text" name="name" class="form-control" required
+             value="{{ network.name if network else '' }}">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">CIDR *</label>
+      <input type="text" name="cidr" class="form-control" required
+             placeholder="192.168.1.0/24"
+             value="{{ network.cidr if network else '' }}">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Site *</label>
+      <select name="site_id" class="form-select" required>
+        <option value="">Select site…</option>
+        {% for site in sites %}
+        <option value="{{ site.id }}" {{ 'selected' if network and network.site_id == site.id }}>
+          {{ site.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Description</label>
+      <textarea name="description" class="form-control" rows="2">{{ network.description if network and network.description else '' }}</textarea>
+    </div>
+
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="network-is-active"
+             {{ 'checked' if network is none or network.is_active }}>
+      <label class="form-check-label" for="network-is-active">Active</label>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary">
+      <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+      Save
+    </button>
+  </div>
+</form>

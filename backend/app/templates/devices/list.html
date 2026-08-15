@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Devices — NetMap{% endblock %}
+{% block page_title %}Devices{% endblock %}
+
+{% block topbar_actions %}
+<button type="button" class="btn btn-primary btn-sm"
+        hx-get="{{ url_for('web.devices.new_device_form') }}"
+        hx-target="#nm-modal-content">
+  <i class="bi bi-plus-lg"></i> Add Device
+</button>
+{% endblock %}
+
+{% block content %}
+<form class="row g-2 mb-3 align-items-center"
+      id="devices-filter-form"
+      hx-get="{{ url_for('web.devices.devices_table') }}"
+      hx-target="#devices-table-wrapper"
+      hx-trigger="input changed delay:300ms from:#search-input, change from:.nm-filter"
+      hx-push-url="true">
+  <div class="col-auto">
+    <input type="text" id="search-input" name="search" class="form-control form-control-sm"
+           placeholder="Search name / hostname..." value="{{ filters.search }}" style="width: 220px;">
+  </div>
+  <div class="col-auto">
+    <select name="network_id" class="form-select form-select-sm nm-filter">
+      <option value="">All networks</option>
+      {% for network in networks %}
+      <option value="{{ network.id }}" {{ 'selected' if filters.network_id|string == network.id|string }}>
+        {{ network.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="device_type" class="form-select form-select-sm nm-filter">
+      <option value="">All types</option>
+      {% for t in device_types %}
+      <option value="{{ t }}" {{ 'selected' if filters.device_type == t }}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="status" class="form-select form-select-sm nm-filter">
+      <option value="">All statuses</option>
+      <option value="active" {{ 'selected' if filters.status == 'active' }}>Active</option>
+      <option value="inactive" {{ 'selected' if filters.status == 'inactive' }}>Inactive</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <a href="{{ url_for('web.devices.list_devices') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+  </div>
+</form>
+
+<div id="devices-table-wrapper">
+  {% include "devices/_table.html" %}
+</div>
+{% endblock %}

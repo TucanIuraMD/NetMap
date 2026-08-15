@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}NetMap{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/netmap.css') }}">
+<script src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
+</head>
+<body>
+<div class="nm-shell">
+  <aside class="nm-sidebar">
+    <div class="nm-sidebar-brand">
+      <i class="bi bi-diagram-3"></i>
+      <span>NetMap</span>
+    </div>
+    <nav class="nm-sidebar-nav">
+      <a href="{{ url_for('web.dashboard.dashboard') }}"
+         class="nm-nav-link {{ 'active' if active_page == 'dashboard' else '' }}">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+      <a href="{{ url_for('web.devices.list_devices') }}"
+         class="nm-nav-link {{ 'active' if active_page == 'devices' else '' }}">
+        <i class="bi bi-hdd-network"></i> Devices
+      </a>
+      <a href="{{ url_for('web.networks.list_networks') }}"
+         class="nm-nav-link {{ 'active' if active_page == 'networks' else '' }}">
+        <i class="bi bi-diagram-2"></i> Networks
+      </a>
+      <a href="{{ url_for('web.connections.list_connections') }}"
+         class="nm-nav-link {{ 'active' if active_page == 'connections' else '' }}">
+        <i class="bi bi-shuffle"></i> Connections
+      </a>
+      <a href="{{ url_for('web.discovery.discovery_index') }}"
+         class="nm-nav-link {{ 'active' if active_page == 'discovery' else '' }}">
+        <i class="bi bi-search"></i> Discovery
+      </a>
+      <a href="{{ url_for('web.topology.topology_view') }}"
+         class="nm-nav-link {{ 'active' if active_page == 'topology' else '' }}">
+        <i class="bi bi-share"></i> Topology
+      </a>
+    </nav>
+  </aside>
+
+  <div class="nm-main">
+    <header class="nm-topbar">
+      <div class="nm-topbar-section">
+        <span class="nm-topbar-title">{% block page_title %}NetMap{% endblock %}</span>
+        {% block breadcrumb %}{% endblock %}
+      </div>
+      <div class="nm-topbar-actions">
+        {% block topbar_actions %}{% endblock %}
+      </div>
+    </header>
+
+    <main class="nm-content">
+      <div id="toast-container" class="nm-toast-container"></div>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<div class="modal fade" id="nm-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content" id="nm-modal-content">
+      <!-- filled by HTMX -->
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/netmap.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

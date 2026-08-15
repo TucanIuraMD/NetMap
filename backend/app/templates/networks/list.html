@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Networks — NetMap{% endblock %}
+{% block page_title %}Networks{% endblock %}
+
+{% block topbar_actions %}
+<button type="button" class="btn btn-primary btn-sm"
+        hx-get="{{ url_for('web.networks.new_network_form') }}"
+        hx-target="#nm-modal-content">
+  <i class="bi bi-plus-lg"></i> Add Network
+</button>
+{% endblock %}
+
+{% block content %}
+<div id="networks-table-wrapper">
+  {% include "networks/_table.html" %}
+</div>
+{% endblock %}

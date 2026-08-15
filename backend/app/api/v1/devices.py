@@ -55,7 +55,6 @@ def create_device():
     network_id = data.get("network_id")
     name = data.get("name")
 
-    display_name=data.get("display_name"),
 
     if network_id is None:
         return jsonify({"error": "network_id is required"}), 400
@@ -79,6 +78,7 @@ def create_device():
     device = Device(
         network_id=network_id,
         name=name,
+        display_name=data.get("display_name"),
         hostname=data.get("hostname"),
         device_type=data.get("device_type"),
         description=data.get("description"),

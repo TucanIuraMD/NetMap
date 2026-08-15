@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Connections — NetMap{% endblock %}
+{% block page_title %}Connections{% endblock %}
+
+{% block topbar_actions %}
+<button type="button" class="btn btn-primary btn-sm"
+        hx-get="{{ url_for('web.connections.new_connection_form') }}"
+        hx-target="#nm-modal-content">
+  <i class="bi bi-plus-lg"></i> Add Connection
+</button>
+{% endblock %}
+
+{% block content %}
+<div id="connections-table-wrapper">
+  {% include "connections/_table.html" %}
+</div>
+{% endblock %}

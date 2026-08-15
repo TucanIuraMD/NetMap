@@ -1,0 +1,96 @@
+{% set is_edit = connection is not none and connection.get('id') is not none %}
+
+<div class="modal-header">
+  <h5 class="modal-title">{{ 'Edit Connection' if is_edit else 'Add Connection' }}</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form hx-{{ 'put' if is_edit else 'post' }}="{{ url_for('web.connections.update_connection', connection_id=connection.id) if is_edit else url_for('web.connections.create_connection') }}"
+      hx-target="#connections-table-wrapper"
+      hx-swap="innerHTML">
+  <div class="modal-body">
+    {% if error %}
+    <div class="alert alert-danger py-2">{{ error }}</div>
+    {% endif %}
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Source Device *</label>
+        <select name="source_device_id" class="form-select" required
+                hx-get="{{ url_for('web.connections.port_options') }}"
+                hx-vals="js:{device_id: event.target.value}"
+                hx-target="#source-port-select"
+                hx-trigger="change">
+          <option value="">Select device…</option>
+          {% for device in devices %}
+          <option value="{{ device.id }}" {{ 'selected' if connection and connection.source_device_id == device.id }}>
+            {{ device.display_name or device.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Source Port</label>
+        <select name="source_port_id" id="source-port-select" class="form-select">
+          {% with ports=source_ports, selected_id=(connection.source_port_id if connection else none) %}
+          {% include "connections/_port_options.html" %}
+          {% endwith %}
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Target Device *</label>
+        <select name="target_device_id" class="form-select" required
+                hx-get="{{ url_for('web.connections.port_options') }}"
+                hx-vals="js:{device_id: event.target.value}"
+                hx-target="#target-port-select"
+                hx-trigger="change">
+          <option value="">Select device…</option>
+          {% for device in devices %}
+          <option value="{{ device.id }}" {{ 'selected' if connection and connection.target_device_id == device.id }}>
+            {{ device.display_name or device.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Target Port</label>
+        <select name="target_port_id" id="target-port-select" class="form-select">
+          {% with ports=target_ports, selected_id=(connection.target_port_id if connection else none) %}
+          {% include "connections/_port_options.html" %}
+          {% endwith %}
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Connection Type</label>
+      <select name="connection_type" class="form-select">
+        {% for t in connection_types %}
+        <option value="{{ t }}" {{ 'selected' if connection and connection.connection_type == t }}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Description</label>
+      <textarea name="description" class="form-control" rows="2">{{ connection.description if connection and connection.description else '' }}</textarea>
+    </div>
+
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="connection-is-active"
+             {{ 'checked' if connection is none or connection.is_active }}>
+      <label class="form-check-label" for="connection-is-active">Active</label>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary">
+      <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+      Save
+    </button>
+  </div>
+</form>

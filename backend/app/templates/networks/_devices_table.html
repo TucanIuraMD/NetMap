@@ -1,0 +1,19 @@
+{% import "_macros.html" as macros %}
+{% if devices %}
+<table class="table table-sm nm-table">
+  <thead><tr><th>Name</th><th>Hostname</th><th>Type</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for device in devices %}
+    <tr class="nm-table-row-clickable"
+        onclick="window.location='{{ url_for('web.devices.device_details', device_id=device.id) }}'">
+      <td>{{ device.display_name or device.name }}</td>
+      <td class="nm-mono">{{ device.hostname or '—' }}</td>
+      <td>{{ device.device_type or '—' }}</td>
+      <td>{{ macros.active_badge(device.is_active) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="text-body-secondary">В этой сети пока нет устройств.</p>
+{% endif %}

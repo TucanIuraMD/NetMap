@@ -1,0 +1,17 @@
+{% macro active_badge(is_active) -%}
+{% if is_active %}
+<span class="badge text-bg-success"><span class="nm-status-dot active"></span>Active</span>
+{% else %}
+<span class="badge text-bg-secondary"><span class="nm-status-dot inactive"></span>Inactive</span>
+{% endif %}
+{%- endmacro %}
+
+{% macro port_status_badge(status) -%}
+{% if status == 'open' %}
+<span class="badge text-bg-success">{{ status }}</span>
+{% elif status == 'closed' %}
+<span class="badge text-bg-secondary">{{ status }}</span>
+{% else %}
+<span class="badge text-bg-warning">{{ status or 'unknown' }}</span>
+{% endif %}
+{%- endmacro %}

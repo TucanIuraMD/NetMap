@@ -1,0 +1,54 @@
+{% import "_macros.html" as macros %}
+
+{% if connections %}
+<div class="table-responsive">
+  <table class="table table-hover nm-table">
+    <thead>
+      <tr><th>Connection</th><th>Ports</th><th>Type</th><th>Description</th><th>Status</th><th class="text-end">Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for c in connections %}
+      <tr>
+        <td class="nm-connection-chain">
+          {{ c.source_name }} <i class="bi bi-arrow-right text-body-secondary"></i> {{ c.target_name }}
+        </td>
+        <td class="nm-mono small">{{ c.source_port_label }} → {{ c.target_port_label }}</td>
+        <td>{{ c.connection_type }}</td>
+        <td>{{ c.description or '—' }}</td>
+        <td>{{ macros.active_badge(c.is_active) }}</td>
+        <td class="text-end">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button class="dropdown-item"
+                        hx-get="{{ url_for('web.connections.edit_connection_form', connection_id=c.id) }}"
+                        hx-target="#nm-modal-content">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button class="dropdown-item text-danger"
+                        hx-delete="{{ url_for('web.connections.delete_connection', connection_id=c.id) }}"
+                        hx-target="#connections-table-wrapper"
+                        data-nm-confirm="Удалить соединение {{ c.source_name }} → {{ c.target_name }}?">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="nm-empty-state">
+  <i class="bi bi-shuffle fs-1"></i>
+  <p class="mt-2 mb-0">Соединения пока не созданы.</p>
+</div>
+{% endif %}
