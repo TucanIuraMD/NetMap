@@ -24,6 +24,89 @@ def device_display_name(device: dict) -> str:
     return device.get("display_name") or device.get("name") or "—"
 
 
+GENERIC_INTERFACE_NAMES = {"", "discovered", "unknown", "iface", "interface", "eth"}
+
+
+def interface_display_label(interface: dict, primary_ip: str | None = None) -> str:
+    """Human-readable, unique label for an interface.
+
+    Uses the real interface name when available; falls back to a stable
+    unique signature (``iface {id}`` or ``iface {id} ({ip})``) for
+    generic discovery placeholders like "discovered".
+    """
+    name = (interface.get("name") or "").strip()
+
+    if name.lower() not in GENERIC_INTERFACE_NAMES:
+        return name
+
+    if primary_ip:
+        return f"iface {interface.get('id')} ({primary_ip})"
+
+    return f"iface {interface.get('id')}"
+
+
+# Well-known service ports (port, protocol) -> display name. This is a
+# presentation-layer fallback only: a port's own ``display_name`` (or the
+# service attached to it) always wins. Used when the UI shows a port and
+# there is no human-readable name stored for it.
+STANDARD_PORT_NAMES: dict[tuple[int, str], str] = {
+    # Web & base infrastructure
+    (53, "tcp"): "DNS",
+    (53, "udp"): "DNS",
+    (67, "udp"): "DHCP",
+    (68, "udp"): "DHCP",
+    (80, "tcp"): "HTTP",
+    (123, "udp"): "NTP",
+    (443, "tcp"): "HTTPS",
+    # Remote access & file transfer
+    (20, "tcp"): "FTP",
+    (21, "tcp"): "FTP",
+    (22, "tcp"): "SSH / SFTP",
+    (23, "tcp"): "Telnet",
+    (69, "udp"): "TFTP",
+    (3389, "tcp"): "RDP",
+    (3389, "udp"): "RDP",
+    # Email
+    (25, "tcp"): "SMTP",
+    (110, "tcp"): "POP3",
+    (143, "tcp"): "IMAP",
+    (465, "tcp"): "SMTPS",
+    (587, "tcp"): "SMTP (Submission)",
+    (993, "tcp"): "IMAPS",
+    (995, "tcp"): "POP3S",
+    # Databases
+    (1433, "tcp"): "Microsoft SQL Server",
+    (1521, "tcp"): "Oracle Database",
+    (3306, "tcp"): "MySQL / MariaDB",
+    (5432, "tcp"): "PostgreSQL",
+    (6379, "tcp"): "Redis",
+    (27017, "tcp"): "MongoDB",
+    # Network management & monitoring
+    (161, "udp"): "SNMP",
+    (162, "udp"): "SNMP",
+    (389, "tcp"): "LDAP",
+    (389, "udp"): "LDAP",
+    (445, "tcp"): "SMB",
+    (636, "tcp"): "LDAPS",
+}
+
+
+def port_service_name(port: dict) -> str | None:
+    """Human-readable service name for a port.
+
+    Returns the port's own ``display_name`` when present, otherwise a
+    standard name from :data:`STANDARD_PORT_NAMES`. Returns ``None`` when
+    neither is available. Never writes to the database.
+    """
+    display_name = (port.get("display_name") or "").strip()
+
+    if display_name:
+        return display_name
+
+    protocol = (port.get("protocol") or "").strip().lower()
+    return STANDARD_PORT_NAMES.get((port.get("port_number"), protocol))
+
+
 def filter_devices(
     devices: list[dict],
     *,

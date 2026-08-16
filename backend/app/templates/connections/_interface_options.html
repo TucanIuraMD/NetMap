@@ -1,6 +1,6 @@
 <option value="">— no interface —</option>
 {% for iface in interfaces %}
 <option value="{{ iface.id }}" {{ 'selected' if selected_id and selected_id == iface.id }}>
-  {{ iface.name }}{{ ' (' + iface.interface_type + ')' if iface.interface_type else '' }}
+  {{ iface.label if iface.label else iface.name }}{{ ' (' + iface.interface_type + ')' if iface.interface_type else '' }}
 </option>
 {% endfor %}

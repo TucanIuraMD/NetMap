@@ -3,7 +3,11 @@ from __future__ import annotations
 from flask import Blueprint, render_template, request
 
 from .api_client import ApiError, api_delete, api_get, api_post, api_put
-from .helpers import device_display_name, index_by_id
+from .helpers import (
+    device_display_name,
+    index_by_id,
+    interface_display_label,
+)
 
 connections_bp = Blueprint("connections", __name__, url_prefix="/connections")
 
@@ -15,6 +19,12 @@ def _connections_with_names() -> list[dict]:
     devices_by_id = index_by_id(api_get("/devices"))
     ports_by_id = index_by_id(api_get("/ports"))
     interfaces_by_id = index_by_id(api_get("/interfaces"))
+    ip_addresses = api_get("/ip-addresses")
+
+    primary_ip_by_interface: dict[int, str] = {}
+    for ip in ip_addresses:
+        if ip.get("is_primary"):
+            primary_ip_by_interface[ip["interface_id"]] = ip["address"]
 
     def port_label(port: dict | None) -> str | None:
         if port is None:
@@ -23,6 +33,14 @@ def _connections_with_names() -> list[dict]:
         if port.get("display_name"):
             label += f" ({port['display_name']})"
         return label
+
+    def interface_label(interface: dict | None) -> str | None:
+        if interface is None:
+            return None
+        return interface_display_label(
+            interface,
+            primary_ip_by_interface.get(interface["id"]),
+        )
 
     for connection in connections:
         source = devices_by_id.get(connection["source_device_id"])
@@ -44,12 +62,8 @@ def _connections_with_names() -> list[dict]:
         )
         connection["source_port_label"] = port_label(source_port)
         connection["target_port_label"] = port_label(target_port)
-        connection["source_interface_label"] = (
-            source_interface["name"] if source_interface else None
-        )
-        connection["target_interface_label"] = (
-            target_interface["name"] if target_interface else None
-        )
+        connection["source_interface_label"] = interface_label(source_interface)
+        connection["target_interface_label"] = interface_label(target_interface)
 
     return connections
 
@@ -104,6 +118,8 @@ def edit_connection_form(connection_id: int):
         i for i in all_interfaces
         if i["device_id"] == connection["target_device_id"]
     ]
+    for iface in source_interfaces + target_interfaces:
+        iface["label"] = interface_display_label(iface)
     source_ports = [
         p for p in all_ports
         if p["device_id"] == connection["source_device_id"]
@@ -140,6 +156,8 @@ def interface_options():
         i for i in api_get("/interfaces")
         if device_id is not None and i["device_id"] == device_id
     ]
+    for iface in interfaces:
+        iface["label"] = interface_display_label(iface)
     return render_template(
         "connections/_interface_options.html", interfaces=interfaces
     )

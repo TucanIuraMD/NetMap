@@ -12,7 +12,9 @@ from .helpers import (
     device_type_options,
     filter_devices,
     index_by_id,
+    interface_display_label,
     paginate,
+    port_service_name,
     sort_devices,
 )
 
@@ -88,10 +90,12 @@ def _filtered_devices() -> tuple[list[dict], dict]:
     connections = api_get("/connections")
 
     ports_count_by_device: dict[int, int] = {}
+    ports_by_device: dict[int, list[dict]] = {}
     for port in ports:
         ports_count_by_device[port["device_id"]] = (
             ports_count_by_device.get(port["device_id"], 0) + 1
         )
+        ports_by_device.setdefault(port["device_id"], []).append(port)
 
     interfaces_by_device: dict[int, list[dict]] = {}
     for interface in interfaces:
@@ -149,6 +153,19 @@ def _filtered_devices() -> tuple[list[dict], dict]:
         device["network_name"] = network["name"] if network else "—"
         device["display"] = device_display_name(device)
         device["ports_count"] = ports_count_by_device.get(device_id, 0)
+        device["ports_preview"] = [
+            {
+                "port_number": port["port_number"],
+                "protocol": port.get("protocol"),
+                "display_name": port.get("display_name"),
+                "service_name": port_service_name(port),
+                "web_url": port.get("web_url"),
+            }
+            for port in sorted(
+                ports_by_device.get(device_id, []),
+                key=lambda p: (p.get("port_number") or 0),
+            )[:3]
+        ]
 
         device_interfaces = interfaces_by_device.get(device_id, [])
         device["interfaces_count"] = len(device_interfaces)
@@ -348,6 +365,11 @@ def _device_details_context(device_id: int) -> dict:
     ports_by_id = index_by_id(all_ports)
     interfaces_by_id = index_by_id(all_interfaces)
 
+    primary_ip_by_interface: dict[int, str] = {}
+    for ip in all_ip_addresses:
+        if ip.get("is_primary"):
+            primary_ip_by_interface[ip["interface_id"]] = ip["address"]
+
     # Group IP addresses under their interface (each interface carries
     # its own list of IPs, so the Interfaces tab can render them inline).
     ip_addresses_by_interface: dict[int, list[dict]] = {}
@@ -370,6 +392,25 @@ def _device_details_context(device_id: int) -> dict:
             None,
         )
         interface["primary_ip"] = primary
+
+    # There is no Port -> IPAddress/Interface foreign key. A service port
+    # binds to the device's primary IP, so the interface carrying it is the
+    # port's host interface (the same rule the API uses for ``web_url``).
+    # Attribute the device's ports to that interface so the Interfaces tab
+    # can render them inline.
+    primary_interface_id = next(
+        (
+            interface["id"]
+            for interface in interfaces
+            if interface.get("primary_ip")
+        ),
+        None,
+    )
+
+    for interface in interfaces:
+        interface["service_ports"] = (
+            ports if interface["id"] == primary_interface_id else []
+        )
 
     for ip in ip_addresses:
         interface = interfaces_by_id.get(ip.get("interface_id"))
@@ -399,10 +440,20 @@ def _device_details_context(device_id: int) -> dict:
             connection.get("target_interface_id")
         )
         connection["source_interface_name"] = (
-            source_interface["name"] if source_interface else None
+            interface_display_label(
+                source_interface,
+                primary_ip_by_interface.get(source_interface["id"]),
+            )
+            if source_interface
+            else None
         )
         connection["target_interface_name"] = (
-            target_interface["name"] if target_interface else None
+            interface_display_label(
+                target_interface,
+                primary_ip_by_interface.get(target_interface["id"]),
+            )
+            if target_interface
+            else None
         )
         connection["source_port_label"] = _port_label(
             ports_by_id.get(connection.get("source_port_id"))

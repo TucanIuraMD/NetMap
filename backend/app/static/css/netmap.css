@@ -264,6 +264,47 @@ code, .nm-mono {
   display: inline-block;
 }
 
+.nm-port-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--nm-border);
+  border-radius: 6px;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  white-space: nowrap;
+}
+
+.nm-port-chip-name {
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+
+.nm-ports-preview li {
+  padding: 0.15rem 0;
+}
+
+.nm-ports-preview li + li {
+  border-top: 1px dashed var(--nm-border);
+}
+
+.nm-port-service {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--bs-body-color);
+  line-height: 1.2;
+}
+
+.nm-open-btn {
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 900px) {
   .nm-sidebar {
     width: 64px;

@@ -74,6 +74,39 @@
 
         <div class="border-top pt-2">
           <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small fw-semibold text-body-secondary">Ports ({{ device.ports_count }})</span>
+            <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}#ports"
+               class="small">Show all ({{ device.ports_count }})</a>
+          </div>
+          {% if device.ports_preview %}
+          <ul class="list-unstyled small mb-0 nm-ports-preview">
+            {% for port in device.ports_preview %}
+            <li class="d-flex justify-content-between align-items-center gap-2">
+              <span class="d-flex align-items-baseline gap-1">
+                {% if port.service_name %}
+                <span class="nm-port-service">{{ port.service_name }}</span>
+                <span class="text-body-secondary">·</span>
+                <span class="nm-mono text-body-secondary">{{ port.port_number }}/{{ port.protocol }}</span>
+                {% else %}
+                <span class="nm-port-service nm-mono">{{ port.port_number }}/{{ port.protocol }}</span>
+                {% endif %}
+              </span>
+              {% if port.web_url %}
+              <a href="{{ port.web_url }}" target="_blank" rel="noopener"
+                 class="btn btn-sm btn-primary nm-open-btn">
+                Open
+              </a>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <span class="text-body-secondary small">—</span>
+          {% endif %}
+        </div>
+
+        <div class="border-top pt-2 mt-2">
+          <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="small fw-semibold text-body-secondary">Interfaces</span>
             <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}#interfaces"
                class="small">Show all ({{ device.interfaces_count }})</a>

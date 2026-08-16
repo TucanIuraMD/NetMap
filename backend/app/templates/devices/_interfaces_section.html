@@ -19,6 +19,17 @@
           {% if iface.primary_ip %}
           <div class="small text-body-secondary nm-mono"><i class="bi bi-globe"></i> {{ iface.primary_ip }}</div>
           {% endif %}
+          {% if iface.service_ports %}
+          <div class="d-flex flex-wrap gap-1 mt-1">
+            {% for port in iface.service_ports %}
+            <span class="nm-port-chip nm-mono"
+                  title="{{ port.description or port.status }}">
+              <i class="bi bi-hdd-network"></i> {{ port.port_number }}/{{ port.protocol }}
+              {% if port.display_name %}<span class="nm-port-chip-name">{{ port.display_name }}</span>{% endif %}
+            </span>
+            {% endfor %}
+          </div>
+          {% endif %}
         </td>
         <td>{{ iface.interface_type or '—' }}</td>
         <td class="nm-mono">{{ iface.mac_address or '—' }}</td>
