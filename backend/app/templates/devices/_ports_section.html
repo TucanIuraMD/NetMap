@@ -1,6 +1,6 @@
 {% import "_macros.html" as macros %}
 <div class="d-flex justify-content-between align-items-center mb-2">
-  <h6 class="mb-0">Service Ports ({{ ports|length }})</h6>
+  <h6 class="mb-0"><i class="bi bi-hdd-network"></i> Service Ports ({{ ports|length }})</h6>
   <button type="button" class="btn btn-sm btn-outline-primary"
           hx-get="{{ url_for('web.devices.new_port_form', device_id=device.id) }}"
           hx-target="#nm-modal-content">
@@ -58,5 +58,8 @@
   </table>
 </div>
 {% else %}
-<p class="text-body-secondary">Порты не найдены.</p>
+<div class="nm-empty-state">
+  <i class="bi bi-hdd-network fs-1"></i>
+  <p class="mt-2 mb-0">Порты не найдены.</p>
+</div>
 {% endif %}

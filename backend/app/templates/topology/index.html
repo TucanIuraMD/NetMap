@@ -31,6 +31,7 @@
 <script>
   window.NM_DEVICES_URL = "{{ url_for('api_v1.devices.list_devices') }}";
   window.NM_CONNECTIONS_URL = "{{ url_for('api_v1.connections.list_connections') }}";
+  window.NM_INTERFACES_URL = "{{ url_for('api_v1.interfaces.list_interfaces') }}";
   window.NM_DEVICE_DETAILS_BASE = "{{ url_for('web.devices.list_devices') }}";
 </script>
 <script src="{{ url_for('static', filename='js/topology.js') }}"></script>

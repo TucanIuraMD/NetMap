@@ -22,18 +22,34 @@
     statusEl.textContent = "Loading topology…";
     panelEl.classList.add("d-none");
 
-    let devices, connections;
+    let devices, connections, interfaces;
 
     try {
-      const [devicesRes, connectionsRes] = await Promise.all([
+      const [devicesRes, connectionsRes, interfacesRes] = await Promise.all([
         fetch(window.NM_DEVICES_URL),
         fetch(window.NM_CONNECTIONS_URL),
+        fetch(window.NM_INTERFACES_URL || "/api/v1/interfaces"),
       ]);
       devices = await devicesRes.json();
       connections = await connectionsRes.json();
+      interfaces = await interfacesRes.json();
     } catch (err) {
       statusEl.textContent = "Не удалось загрузить данные топологии.";
       return;
+    }
+
+    const interfacesByDevice = {};
+    (interfaces || []).forEach(function (iface) {
+      (interfacesByDevice[iface.device_id] =
+        interfacesByDevice[iface.device_id] || []).push(iface);
+    });
+
+    function interfaceLabel(deviceId, interfaceId) {
+      const list = interfacesByDevice[deviceId] || [];
+      const match = list.find(function (i) {
+        return i.id === interfaceId;
+      });
+      return match ? match.name : null;
     }
 
     const nodes = devices.map(function (device) {
@@ -55,12 +71,31 @@
         );
       })
       .map(function (c) {
+        const sourceIface = interfaceLabel(
+          c.source_device_id,
+          c.source_interface_id
+        );
+        const targetIface = interfaceLabel(
+          c.target_device_id,
+          c.target_interface_id
+        );
+
+        let label = null;
+        if (sourceIface && targetIface) {
+          label = sourceIface + " — " + targetIface;
+        } else if (sourceIface) {
+          label = sourceIface + " →";
+        } else if (targetIface) {
+          label = "→ " + targetIface;
+        }
+
         return {
           data: {
             id: "conn-" + c.id,
             source: "device-" + c.source_device_id,
             target: "device-" + c.target_device_id,
             type: c.connection_type,
+            label: label,
           },
         };
       });
@@ -99,6 +134,14 @@
             "line-style": function (ele) {
               return ele.data("type") === "wifi" ? "dashed" : "solid";
             },
+            label: "data(label)",
+            color: "#8b949e",
+            "font-size": 10,
+            "text-background-color": "#0d1117",
+            "text-background-opacity": 0.8,
+            "text-background-padding": "2px",
+            "text-rotation": "autorotate",
+            "text-margin-y": -8,
           },
         },
         {

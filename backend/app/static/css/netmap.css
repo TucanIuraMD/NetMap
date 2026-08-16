@@ -166,7 +166,73 @@ code, .nm-mono {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  flex-wrap: wrap;
+}
+
+.nm-connection-endpoint {
+  line-height: 1.3;
+}
+
+.nm-connection-arrow {
+  color: var(--nm-muted);
+  flex-shrink: 0;
+}
+
+/* ---------- device cards ---------- */
+
+.nm-device-card {
+  border-color: var(--nm-border);
+  background-color: var(--bs-tertiary-bg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nm-device-card:hover {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 1px var(--bs-primary);
+}
+
+.nm-device-title {
+  color: var(--bs-body-color);
+}
+
+.nm-device-card:hover .nm-device-title {
+  color: var(--bs-primary);
+}
+
+.nm-device-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background-color: var(--bs-body-bg);
+  border: 1px solid var(--nm-border);
+  color: var(--nm-muted);
+  flex-shrink: 0;
+}
+
+.nm-device-stats {
+  border: 1px solid var(--nm-border);
+  border-radius: 8px;
+  background-color: var(--bs-body-bg);
+  padding: 0.5rem 0.25rem;
+  margin-bottom: 0;
+}
+
+.nm-device-stat-value {
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.nm-device-stat-label {
+  color: var(--nm-muted);
+  font-size: 0.7rem;
+  margin-top: 0.2rem;
+}
+
+.nm-interface-preview li {
+  line-height: 1.6;
 }
 
 .nm-toast-container {
@@ -183,6 +249,10 @@ code, .nm-mono {
   text-align: center;
   color: var(--nm-muted);
   padding: 2.5rem 1rem;
+}
+
+.nm-empty-state .btn {
+  margin-top: 0.25rem;
 }
 
 .htmx-indicator {

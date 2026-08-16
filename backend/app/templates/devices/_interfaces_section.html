@@ -1,6 +1,6 @@
 {% import "_macros.html" as macros %}
 <div class="d-flex justify-content-between align-items-center mb-2">
-  <h6 class="mb-0">Interfaces ({{ interfaces|length }})</h6>
+  <h6 class="mb-0"><i class="bi bi-ethernet"></i> Interfaces ({{ interfaces|length }})</h6>
   <button type="button" class="btn btn-sm btn-outline-primary"
           hx-get="{{ url_for('web.devices.new_interface_form', device_id=device.id) }}"
           hx-target="#nm-modal-content">
@@ -14,7 +14,12 @@
     <tbody>
       {% for iface in interfaces %}
       <tr>
-        <td class="nm-mono fw-semibold">{{ iface.name }}</td>
+        <td>
+          <div class="nm-mono fw-semibold">{{ iface.name }}</div>
+          {% if iface.primary_ip %}
+          <div class="small text-body-secondary nm-mono"><i class="bi bi-globe"></i> {{ iface.primary_ip }}</div>
+          {% endif %}
+        </td>
         <td>{{ iface.interface_type or '—' }}</td>
         <td class="nm-mono">{{ iface.mac_address or '—' }}</td>
         <td>{{ iface.speed or '—' }}</td>
@@ -51,5 +56,8 @@
   </table>
 </div>
 {% else %}
-<p class="text-body-secondary">Интерфейсы не найдены.</p>
+<div class="nm-empty-state">
+  <i class="bi bi-ethernet fs-1"></i>
+  <p class="mt-2 mb-0">Интерфейсы не найдены.</p>
+</div>
 {% endif %}

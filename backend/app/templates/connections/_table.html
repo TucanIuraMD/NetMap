@@ -9,10 +9,24 @@
     <tbody>
       {% for c in connections %}
       <tr>
-        <td class="nm-connection-chain">
-          {{ c.source_name }} <i class="bi bi-arrow-right text-body-secondary"></i> {{ c.target_name }}
+        <td>
+          <div class="nm-connection-chain">
+            <div class="nm-connection-endpoint">
+              <div class="fw-semibold">{{ c.source_name }}</div>
+              {% if c.source_interface_label %}
+              <div class="nm-mono small text-body-secondary"><i class="bi bi-ethernet"></i> {{ c.source_interface_label }}</div>
+              {% endif %}
+            </div>
+            <i class="bi bi-arrow-right nm-connection-arrow"></i>
+            <div class="nm-connection-endpoint">
+              <div class="fw-semibold">{{ c.target_name }}</div>
+              {% if c.target_interface_label %}
+              <div class="nm-mono small text-body-secondary"><i class="bi bi-ethernet"></i> {{ c.target_interface_label }}</div>
+              {% endif %}
+            </div>
+          </div>
         </td>
-        <td class="nm-mono small">{{ c.source_port_label }} → {{ c.target_port_label }}</td>
+        <td class="nm-mono small">{{ c.source_port_label or '—' }} → {{ c.target_port_label or '—' }}</td>
         <td>{{ c.connection_type }}</td>
         <td>{{ c.description or '—' }}</td>
         <td>{{ macros.active_badge(c.is_active) }}</td>

@@ -47,6 +47,18 @@
   </div>
   <div class="col">
     <div class="nm-stat-card">
+      <div class="nm-stat-value">{{ stats.interfaces }}</div>
+      <div class="nm-stat-label">Interfaces</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="nm-stat-card">
+      <div class="nm-stat-value">{{ stats.ip_addresses }}</div>
+      <div class="nm-stat-label">IP Addresses</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="nm-stat-card">
       <div class="nm-stat-value">{{ stats.ports }}</div>
       <div class="nm-stat-label">Ports</div>
     </div>
@@ -65,8 +77,8 @@
   </div>
 </div>
 
-<div class="row g-3">
-  <div class="col-md-6">
+<div class="row row-cols-1 row-cols-lg-3 g-3">
+  <div class="col">
     <div class="card">
       <div class="card-header">Недавно изменённые устройства</div>
       <ul class="list-group list-group-flush">
@@ -83,7 +95,7 @@
       </ul>
     </div>
   </div>
-  <div class="col-md-6">
+  <div class="col">
     <div class="card">
       <div class="card-header">Inactive устройства</div>
       <ul class="list-group list-group-flush">
@@ -98,6 +110,32 @@
         <li class="list-group-item nm-empty-state">Все устройства активны</li>
         {% endfor %}
       </ul>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <div class="card-header">Devices without links</div>
+      {% if devices_without_links %}
+      <ul class="list-group list-group-flush">
+        {% for device in devices_without_links %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}">
+            {{ device.display }}
+          </a>
+          <span class="text-body-secondary small">{{ device.network_name }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if devices_without_links_total > devices_without_links|length %}
+      <div class="card-footer text-body-secondary small">
+        и ещё {{ devices_without_links_total - devices_without_links|length }}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="list-group list-group-flush">
+        <div class="list-group-item nm-empty-state">Все устройства подключены</div>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>

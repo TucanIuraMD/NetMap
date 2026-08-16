@@ -17,10 +17,11 @@
       <div class="col-md-6 mb-3">
         <label class="form-label">Source Device *</label>
         <select name="source_device_id" class="form-select" required
-                hx-get="{{ url_for('web.connections.port_options') }}"
+                hx-get="{{ url_for('web.connections.interface_options') }}"
                 hx-vals="js:{device_id: event.target.value}"
-                hx-target="#source-port-select"
-                hx-trigger="change">
+                hx-target="#source-interface-select"
+                hx-trigger="change"
+                hx-on:change="htmx.ajax('GET', '{{ url_for('web.connections.port_options') }}?device_id=' + event.target.value, {target: '#source-port-select'})">
           <option value="">Select device…</option>
           {% for device in devices %}
           <option value="{{ device.id }}" {{ 'selected' if connection and connection.source_device_id == device.id }}>
@@ -30,10 +31,10 @@
         </select>
       </div>
       <div class="col-md-6 mb-3">
-        <label class="form-label">Source Port</label>
-        <select name="source_port_id" id="source-port-select" class="form-select">
-          {% with ports=source_ports, selected_id=(connection.source_port_id if connection else none) %}
-          {% include "connections/_port_options.html" %}
+        <label class="form-label">Source Interface</label>
+        <select name="source_interface_id" id="source-interface-select" class="form-select">
+          {% with interfaces=source_interfaces, selected_id=(connection.source_interface_id if connection else none) %}
+          {% include "connections/_interface_options.html" %}
           {% endwith %}
         </select>
       </div>
@@ -43,10 +44,11 @@
       <div class="col-md-6 mb-3">
         <label class="form-label">Target Device *</label>
         <select name="target_device_id" class="form-select" required
-                hx-get="{{ url_for('web.connections.port_options') }}"
+                hx-get="{{ url_for('web.connections.interface_options') }}"
                 hx-vals="js:{device_id: event.target.value}"
-                hx-target="#target-port-select"
-                hx-trigger="change">
+                hx-target="#target-interface-select"
+                hx-trigger="change"
+                hx-on:change="htmx.ajax('GET', '{{ url_for('web.connections.port_options') }}?device_id=' + event.target.value, {target: '#target-port-select'})">
           <option value="">Select device…</option>
           {% for device in devices %}
           <option value="{{ device.id }}" {{ 'selected' if connection and connection.target_device_id == device.id }}>
@@ -56,14 +58,37 @@
         </select>
       </div>
       <div class="col-md-6 mb-3">
-        <label class="form-label">Target Port</label>
-        <select name="target_port_id" id="target-port-select" class="form-select">
-          {% with ports=target_ports, selected_id=(connection.target_port_id if connection else none) %}
-          {% include "connections/_port_options.html" %}
+        <label class="form-label">Target Interface</label>
+        <select name="target_interface_id" id="target-interface-select" class="form-select">
+          {% with interfaces=target_interfaces, selected_id=(connection.target_interface_id if connection else none) %}
+          {% include "connections/_interface_options.html" %}
           {% endwith %}
         </select>
       </div>
     </div>
+
+    <details class="mb-3"
+            {{ 'open' if (connection and (connection.source_port_id or connection.target_port_id)) }}>
+      <summary class="text-body-secondary small">Legacy port-based fields (advanced)</summary>
+      <div class="row mt-2">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Source Port <span class="text-body-secondary small">(legacy)</span></label>
+          <select name="source_port_id" id="source-port-select" class="form-select">
+            {% with ports=source_ports, selected_id=(connection.source_port_id if connection else none) %}
+            {% include "connections/_port_options.html" %}
+            {% endwith %}
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Target Port <span class="text-body-secondary small">(legacy)</span></label>
+          <select name="target_port_id" id="target-port-select" class="form-select">
+            {% with ports=target_ports, selected_id=(connection.target_port_id if connection else none) %}
+            {% include "connections/_port_options.html" %}
+            {% endwith %}
+          </select>
+        </div>
+      </div>
+    </details>
 
     <div class="mb-3">
       <label class="form-label">Connection Type</label>

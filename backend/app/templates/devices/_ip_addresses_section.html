@@ -1,6 +1,6 @@
 {% import "_macros.html" as macros %}
 <div class="d-flex justify-content-between align-items-center mb-2">
-  <h6 class="mb-0">IP Addresses ({{ ip_addresses|length }})</h6>
+  <h6 class="mb-0"><i class="bi bi-diagram-3"></i> IP Addresses ({{ ip_addresses|length }})</h6>
   <button type="button" class="btn btn-sm btn-outline-primary"
           hx-get="{{ url_for('web.devices.new_ip_address_form', device_id=device.id) }}"
           hx-target="#nm-modal-content">
@@ -8,16 +8,23 @@
   </button>
 </div>
 {% if ip_addresses %}
+{% set grouped = ip_addresses | groupby('interface_name') %}
 <div class="table-responsive">
   <table class="table table-sm nm-table">
     <thead><tr><th>Address</th><th>Interface</th><th>Version</th><th>Primary</th><th>Description</th><th class="text-end">Actions</th></tr></thead>
     <tbody>
-      {% for ip in ip_addresses %}
-      <tr>
-        <td class="nm-mono fw-semibold">{{ ip.address }}</td>
-        <td class="nm-mono">{{ ip.interface_name or ip.interface_id }}</td>
+      {% for group in grouped %}
+      {% for ip in group.list %}
+      <tr{% if not loop.first %} class="align-middle"{% endif %}>
+        <td class="nm-mono fw-semibold">
+          {% if ip.is_primary %}<i class="bi bi-star-fill text-warning"></i>{% endif %}
+          {{ ip.address }}
+        </td>
+        <td class="nm-mono">
+          {% if loop.first %}{{ ip.interface_name or ip.interface_id }}{% endif %}
+        </td>
         <td>IPv{{ ip.version }}</td>
-        <td>{% if ip.is_primary %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+        <td>{% if ip.is_primary %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<span class="text-body-secondary">—</span>{% endif %}</td>
         <td>{{ ip.description or '—' }}</td>
         <td class="text-end">
           <div class="dropdown">
@@ -46,9 +53,13 @@
         </td>
       </tr>
       {% endfor %}
+      {% endfor %}
     </tbody>
   </table>
 </div>
 {% else %}
-<p class="text-body-secondary">IP-адреса не найдены.</p>
+<div class="nm-empty-state">
+  <i class="bi bi-diagram-3 fs-1"></i>
+  <p class="mt-2 mb-0">IP-адреса не найдены.</p>
+</div>
 {% endif %}

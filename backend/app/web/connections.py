@@ -14,12 +14,27 @@ def _connections_with_names() -> list[dict]:
     connections = api_get("/connections")
     devices_by_id = index_by_id(api_get("/devices"))
     ports_by_id = index_by_id(api_get("/ports"))
+    interfaces_by_id = index_by_id(api_get("/interfaces"))
+
+    def port_label(port: dict | None) -> str | None:
+        if port is None:
+            return None
+        label = f"{port['port_number']}/{port['protocol']}"
+        if port.get("display_name"):
+            label += f" ({port['display_name']})"
+        return label
 
     for connection in connections:
         source = devices_by_id.get(connection["source_device_id"])
         target = devices_by_id.get(connection["target_device_id"])
         source_port = ports_by_id.get(connection.get("source_port_id"))
         target_port = ports_by_id.get(connection.get("target_port_id"))
+        source_interface = interfaces_by_id.get(
+            connection.get("source_interface_id")
+        )
+        target_interface = interfaces_by_id.get(
+            connection.get("target_interface_id")
+        )
 
         connection["source_name"] = (
             device_display_name(source) if source else "—"
@@ -27,13 +42,13 @@ def _connections_with_names() -> list[dict]:
         connection["target_name"] = (
             device_display_name(target) if target else "—"
         )
-        connection["source_port_label"] = (
-            f"{source_port['port_number']}/{source_port['protocol']}"
-            if source_port else "—"
+        connection["source_port_label"] = port_label(source_port)
+        connection["target_port_label"] = port_label(target_port)
+        connection["source_interface_label"] = (
+            source_interface["name"] if source_interface else None
         )
-        connection["target_port_label"] = (
-            f"{target_port['port_number']}/{target_port['protocol']}"
-            if target_port else "—"
+        connection["target_interface_label"] = (
+            target_interface["name"] if target_interface else None
         )
 
     return connections
@@ -56,6 +71,8 @@ def new_connection_form():
         connection=None,
         devices=devices,
         connection_types=CONNECTION_TYPES,
+        source_interfaces=[],
+        target_interfaces=[],
         source_ports=[],
         target_ports=[],
         error=None,
@@ -77,7 +94,16 @@ def edit_connection_form(connection_id: int):
 
     devices = api_get("/devices")
     all_ports = api_get("/ports")
+    all_interfaces = api_get("/interfaces")
 
+    source_interfaces = [
+        i for i in all_interfaces
+        if i["device_id"] == connection["source_device_id"]
+    ]
+    target_interfaces = [
+        i for i in all_interfaces
+        if i["device_id"] == connection["target_device_id"]
+    ]
     source_ports = [
         p for p in all_ports
         if p["device_id"] == connection["source_device_id"]
@@ -92,9 +118,30 @@ def edit_connection_form(connection_id: int):
         connection=connection,
         devices=devices,
         connection_types=CONNECTION_TYPES,
+        source_interfaces=source_interfaces,
+        target_interfaces=target_interfaces,
         source_ports=source_ports,
         target_ports=target_ports,
         error=None,
+    )
+
+
+@connections_bp.get("/interface-options")
+def interface_options():
+    """Cascading <select> partial: interfaces belonging to a device.
+
+    Used by the create/edit connection form via hx-get (query param
+    ``device_id``), triggered when the source/target device select
+    changes.
+    """
+    device_id = request.args.get("device_id", type=int)
+
+    interfaces = [
+        i for i in api_get("/interfaces")
+        if device_id is not None and i["device_id"] == device_id
+    ]
+    return render_template(
+        "connections/_interface_options.html", interfaces=interfaces
     )
 
 
@@ -123,6 +170,8 @@ def _connection_form_payload() -> dict:
     return {
         "source_device_id": request.form.get("source_device_id", type=int),
         "target_device_id": request.form.get("target_device_id", type=int),
+        "source_interface_id": optional_int("source_interface_id"),
+        "target_interface_id": optional_int("target_interface_id"),
         "source_port_id": optional_int("source_port_id"),
         "target_port_id": optional_int("target_port_id"),
         "connection_type": request.form.get("connection_type", "network"),
@@ -144,6 +193,8 @@ def create_connection():
             connection=payload,
             devices=devices,
             connection_types=CONNECTION_TYPES,
+            source_interfaces=[],
+            target_interfaces=[],
             source_ports=[],
             target_ports=[],
             error=exc.message,
@@ -169,6 +220,8 @@ def update_connection(connection_id: int):
             connection=payload,
             devices=devices,
             connection_types=CONNECTION_TYPES,
+            source_interfaces=[],
+            target_interfaces=[],
             source_ports=[],
             target_ports=[],
             error=exc.message,

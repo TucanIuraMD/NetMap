@@ -56,103 +56,25 @@
   </div>
 
   <div class="tab-pane fade" id="tab-network">
-    <h6>Interfaces</h6>
-    {% if interfaces %}
-    <table class="table table-sm nm-table mb-4">
-      <thead><tr><th>Name</th><th>MAC</th><th>Type</th><th>Speed</th><th>MTU</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for iface in interfaces %}
-        <tr>
-          <td>{{ iface.name }}</td>
-          <td class="nm-mono">{{ iface.mac_address or '—' }}</td>
-          <td>{{ iface.interface_type or '—' }}</td>
-          <td>{{ iface.speed or '—' }}</td>
-          <td>{{ iface.mtu or '—' }}</td>
-          <td>{{ macros.active_badge(iface.is_active) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="text-body-secondary">Интерфейсы не найдены.</p>
-    {% endif %}
+    <div id="device-interfaces-section">
+      {% include "devices/_interfaces_section.html" %}
+    </div>
 
-    <h6>IP Addresses</h6>
-    {% if ip_addresses %}
-    <table class="table table-sm nm-table">
-      <thead><tr><th>Address</th><th>Version</th><th>Primary</th><th>Description</th></tr></thead>
-      <tbody>
-        {% for ip in ip_addresses %}
-        <tr>
-          <td class="nm-mono">{{ ip.address }}</td>
-          <td>IPv{{ ip.version }}</td>
-          <td>{% if ip.is_primary %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
-          <td>{{ ip.description or '—' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="text-body-secondary">IP-адреса не найдены.</p>
-    {% endif %}
+    <hr class="my-4">
+
+    <div id="device-ip-addresses-section">
+      {% include "devices/_ip_addresses_section.html" %}
+    </div>
   </div>
 
   <div class="tab-pane fade" id="tab-ports">
-    {% if ports %}
-    <table class="table table-sm nm-table">
-      <thead><tr><th>Port</th><th>Protocol</th><th>Status</th><th>Display Name</th><th>Web Access</th></tr></thead>
-      <tbody>
-        {% for port in ports %}
-        <tr>
-          <td class="nm-mono">{{ port.port_number }}</td>
-          <td>{{ port.protocol }}</td>
-          <td>{{ macros.port_status_badge(port.status) }}</td>
-          <td>{{ port.display_name or '—' }}</td>
-          <td>
-            {% if port.web_url %}
-            <a href="{{ port.web_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
-              <i class="bi bi-box-arrow-up-right"></i> Open
-            </a>
-            {% else %}
-            <span class="text-body-secondary small">—</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="text-body-secondary">Порты не найдены.</p>
-    {% endif %}
+    <div id="device-ports-section">
+      {% include "devices/_ports_section.html" %}
+    </div>
   </div>
 
   <div class="tab-pane fade" id="tab-connections">
-    <div class="d-flex justify-content-end mb-2">
-      <a href="{{ url_for('web.connections.list_connections') }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-shuffle"></i> Manage connections
-      </a>
-    </div>
-    {% if connections %}
-    <table class="table table-sm nm-table">
-      <thead><tr><th>Connection</th><th>Type</th><th>Description</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for c in connections %}
-        <tr>
-          <td class="nm-connection-chain">
-            <span class="{{ 'fw-semibold' if c.source_device_id == device.id }}">{{ c.source_name }}</span>
-            <i class="bi bi-arrow-right"></i>
-            <span class="{{ 'fw-semibold' if c.target_device_id == device.id }}">{{ c.target_name }}</span>
-          </td>
-          <td>{{ c.connection_type }}</td>
-          <td>{{ c.description or '—' }}</td>
-          <td>{{ macros.active_badge(c.is_active) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="text-body-secondary">Соединения не найдены.</p>
-    {% endif %}
+    {% include "devices/_connections_section.html" %}
   </div>
 
 </div>

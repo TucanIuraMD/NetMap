@@ -31,6 +31,7 @@ def filter_devices(
     network_id: str = "",
     device_type: str = "",
     status: str = "",
+    links: str = "",
 ) -> list[dict]:
     result = devices
 
@@ -59,6 +60,11 @@ def filter_devices(
         result = [d for d in result if d.get("is_active")]
     elif status == "inactive":
         result = [d for d in result if not d.get("is_active")]
+
+    if links == "with":
+        result = [d for d in result if (d.get("connections_count") or 0) > 0]
+    elif links == "without":
+        result = [d for d in result if not d.get("connections_count")]
 
     return result
 

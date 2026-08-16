@@ -11,12 +11,22 @@
     <tbody>
       {% for c in connections %}
       <tr>
-        <td class="nm-connection-chain">
-          <span class="{{ 'fw-semibold' if c.source_device_id == device.id }}">{{ c.source_name }}</span>
-          {% if c.source_interface_name %}<span class="nm-mono small text-body-secondary">({{ c.source_interface_name }})</span>{% endif %}
-          <i class="bi bi-arrow-right"></i>
-          <span class="{{ 'fw-semibold' if c.target_device_id == device.id }}">{{ c.target_name }}</span>
-          {% if c.target_interface_name %}<span class="nm-mono small text-body-secondary">({{ c.target_interface_name }})</span>{% endif %}
+        <td>
+          <div class="nm-connection-chain">
+            <div class="nm-connection-endpoint">
+              <div class="fw-semibold">{{ c.source_name }}</div>
+              {% if c.source_interface_name %}
+              <div class="nm-mono small text-body-secondary"><i class="bi bi-ethernet"></i> {{ c.source_interface_name }}</div>
+              {% endif %}
+            </div>
+            <i class="bi bi-arrow-right nm-connection-arrow"></i>
+            <div class="nm-connection-endpoint">
+              <div class="fw-semibold">{{ c.target_name }}</div>
+              {% if c.target_interface_name %}
+              <div class="nm-mono small text-body-secondary"><i class="bi bi-ethernet"></i> {{ c.target_interface_name }}</div>
+              {% endif %}
+            </div>
+          </div>
         </td>
         <td>{{ c.connection_type }}</td>
         <td>{{ c.description or '—' }}</td>
@@ -27,5 +37,8 @@
   </table>
 </div>
 {% else %}
-<p class="text-body-secondary">Соединения не найдены.</p>
+<div class="nm-empty-state">
+  <i class="bi bi-shuffle fs-1"></i>
+  <p class="mt-2 mb-0">Соединения не найдены.</p>
+</div>
 {% endif %}

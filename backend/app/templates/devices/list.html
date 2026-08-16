@@ -48,6 +48,13 @@
     </select>
   </div>
   <div class="col-auto">
+    <select name="links" class="form-select form-select-sm nm-filter">
+      <option value="">All links</option>
+      <option value="with" {{ 'selected' if filters.links == 'with' }}>With links</option>
+      <option value="without" {{ 'selected' if filters.links == 'without' }}>Without links</option>
+    </select>
+  </div>
+  <div class="col-auto">
     <a href="{{ url_for('web.devices.list_devices') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
   </div>
 </form>
