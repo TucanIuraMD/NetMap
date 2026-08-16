@@ -1,14 +1,10 @@
 """Shared helpers for the Web UI layer.
 
-NOTE (backend gap): docs/03_API.md advertises search/filter/sort/
-pagination on list endpoints, but the current implementation of
-``GET /api/v1/devices`` (and other list endpoints) ignores query
-parameters entirely and always returns the full collection.
-
-Until that is implemented in the API, filtering/sorting/pagination
-for the UI happens here, in-memory, at the UI layer. This is a
-deliberate, documented workaround — not a silent reinvention of the
-API contract. See docs/UI_STATUS.md.
+NOTE: ``GET /api/v1/devices`` now implements search/filter/sort/
+pagination server-side (see ``api/v1/devices.py``), so the Web UI
+passes those query parameters through and only enriches the returned
+page. The in-memory helpers below are kept for other collections and
+for UI-side fallbacks.
 """
 
 from __future__ import annotations

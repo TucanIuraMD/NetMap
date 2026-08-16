@@ -43,8 +43,8 @@ def _handle_response(response) -> Any:
     return payload
 
 
-def api_get(path: str) -> Any:
-    response = _client().get(f"/api/v1{path}")
+def api_get(path: str, params: dict | None = None) -> Any:
+    response = _client().get(f"/api/v1{path}", query_string=params)
     return _handle_response(response)
 
 

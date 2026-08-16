@@ -1,11 +1,21 @@
 from flask import Blueprint, jsonify, request
+from sqlalchemy import func, or_, select
 
 from ...extensions import db
+from ...models.connection import Connection
 from ...models.device import Device
 from ...models.network import Network
 
 
 devices_bp = Blueprint("devices", __name__, url_prefix="/devices")
+
+DEVICE_SORT_COLUMNS = {
+    "id": Device.id,
+    "name": Device.name,
+    "display_name": Device.display_name,
+    "hostname": Device.hostname,
+    "device_type": Device.device_type,
+}
 
 
 def device_to_dict(device: Device) -> dict:
@@ -29,10 +39,108 @@ def device_to_dict(device: Device) -> dict:
     }
 
 
+def _device_has_connection():
+    """Correlated EXISTS for any connection touching a Device."""
+    return (
+        select(Connection.id)
+        .where(
+            or_(
+                Connection.source_device_id == Device.id,
+                Connection.target_device_id == Device.id,
+            )
+        )
+        .exists()
+    )
+
+
+def _paginate(query, page: int, per_page: int) -> dict:
+    page = max(page, 1)
+    per_page = max(min(per_page, 500), 1)
+
+    total = query.count()
+    total_pages = max((total + per_page - 1) // per_page, 1)
+    items = (
+        query.offset((page - 1) * per_page).limit(per_page).all()
+    )
+
+    return {
+        "items": [device_to_dict(device) for device in items],
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "total_pages": total_pages,
+    }
+
+
 @devices_bp.get("")
 def list_devices():
-    devices = Device.query.order_by(Device.id).all()
-    return jsonify([device_to_dict(device) for device in devices])
+    args = request.args
+
+    # Backward-compatible fast path: no query parameters at all means
+    # "return everything", exactly as before.
+    if not args:
+        devices = Device.query.order_by(Device.id).all()
+        return jsonify([device_to_dict(device) for device in devices])
+
+    query = Device.query
+
+    search = args.get("search", "").strip()
+    if search:
+        needle = f"%{search}%"
+        query = query.filter(
+            or_(
+                Device.name.ilike(needle),
+                Device.display_name.ilike(needle),
+                Device.hostname.ilike(needle),
+            )
+        )
+
+    network_id = args.get("network_id", "").strip()
+    if network_id:
+        try:
+            query = query.filter(Device.network_id == int(network_id))
+        except ValueError:
+            pass
+
+    device_type = args.get("device_type", "").strip()
+    if device_type:
+        query = query.filter(Device.device_type == device_type)
+
+    status = args.get("status", "").strip()
+    if status == "active":
+        query = query.filter(Device.is_active.is_(True))
+    elif status == "inactive":
+        query = query.filter(Device.is_active.is_(False))
+
+    links = args.get("links", "").strip()
+    if links == "with":
+        query = query.filter(_device_has_connection())
+    elif links == "without":
+        query = query.filter(~_device_has_connection())
+
+    sort = args.get("sort", "").strip()
+    field = sort.lstrip("-")
+    reverse = sort.startswith("-")
+    order = args.get("order", "").strip().lower()
+    if order in ("asc", "desc"):
+        reverse = order == "desc"
+
+    column = DEVICE_SORT_COLUMNS.get(field)
+    if column is not None:
+        ordered = func.lower(column)
+        query = query.order_by(
+            ordered.desc() if reverse else ordered.asc(),
+            Device.id,
+        )
+    else:
+        query = query.order_by(Device.id)
+
+    page = args.get("page", 1, type=int)
+    per_page = args.get("per_page", type=int)
+    if per_page is None:
+        per_page = args.get("page_size", 50, type=int)
+
+    return jsonify(_paginate(query, page, per_page))
 
 
 @devices_bp.get("/<int:device_id>")

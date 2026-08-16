@@ -10,12 +10,9 @@ from .helpers import (
     device_ip_addresses,
     device_ports,
     device_type_options,
-    filter_devices,
     index_by_id,
     interface_display_label,
-    paginate,
     port_service_name,
-    sort_devices,
 )
 
 devices_bp = Blueprint("devices", __name__, url_prefix="/devices")
@@ -81,7 +78,6 @@ def _primary_ip_by_device(
 
 
 def _filtered_devices() -> tuple[list[dict], dict]:
-    devices = api_get("/devices")
     networks = api_get("/networks")
     networks_by_id = index_by_id(networks)
     ports = api_get("/ports")
@@ -112,7 +108,7 @@ def _filtered_devices() -> tuple[list[dict], dict]:
         if ip.get("is_primary"):
             primary_by_interface[ip["interface_id"]] = ip["address"]
 
-    # Used by the `links` filter and the per-card Links counter below.
+    # Used by the per-card Links counter below.
     connections_count_by_device: dict[int, int] = {}
     for connection in connections:
         connections_count_by_device[connection["source_device_id"]] = (
@@ -126,8 +122,6 @@ def _filtered_devices() -> tuple[list[dict], dict]:
             ) + 1
         )
 
-    primary_ip = _primary_ip_by_device(devices, interfaces, ip_addresses)
-
     filters = {
         "search": request.args.get("search", ""),
         "network_id": request.args.get("network_id", ""),
@@ -137,15 +131,18 @@ def _filtered_devices() -> tuple[list[dict], dict]:
     }
     sort = request.args.get("sort", "")
 
-    # The `links` filter below relies on ``connections_count``, so it must
-    # be set on every device *before* ``filter_devices`` runs.
-    for device in devices:
-        device["connections_count"] = connections_count_by_device.get(
-            device["id"], 0
-        )
+    # Filtering, sorting and pagination happen server-side in the API
+    # (GET /api/v1/devices). The UI only enriches the returned page.
+    params: dict = {k: v for k, v in filters.items() if v}
+    if sort:
+        params["sort"] = sort
+    params["page"] = request.args.get("page", 1, type=int)
+    params["per_page"] = request.args.get("page_size", 50, type=int)
 
-    result = filter_devices(devices, **filters)
-    result = sort_devices(result, sort)
+    payload = api_get("/devices", params=params)
+    result = payload["items"]
+
+    primary_ip = _primary_ip_by_device(result, interfaces, ip_addresses)
 
     for device in result:
         device_id = device["id"]
@@ -167,11 +164,11 @@ def _filtered_devices() -> tuple[list[dict], dict]:
             )[:3]
         ]
 
-        device_interfaces = interfaces_by_device.get(device_id, [])
-        device["interfaces_count"] = len(device_interfaces)
+        device_ifaces = interfaces_by_device.get(device_id, [])
+        device["interfaces_count"] = len(device_ifaces)
         device["ip_count"] = sum(
             ip_count_by_interface.get(interface["id"], 0)
-            for interface in device_interfaces
+            for interface in device_ifaces
         )
         device["connections_count"] = connections_count_by_device.get(
             device_id, 0
@@ -183,27 +180,34 @@ def _filtered_devices() -> tuple[list[dict], dict]:
                 "primary_ip": primary_by_interface.get(interface["id"]),
             }
             for interface in sorted(
-                device_interfaces,
+                device_ifaces,
                 key=lambda i: (i.get("name") or "").lower(),
             )[:3]
         ]
         device["primary_ip"] = primary_ip.get(device_id)
 
-    page = paginate(
-        result,
-        page=request.args.get("page", 1, type=int),
-        page_size=request.args.get("page_size", 50, type=int),
-    )
+    # The API returns pagination metadata; keep the shape the templates
+    # expect (page / page_size / total / total_pages).
+    pagination = {
+        "page": payload["page"],
+        "page_size": payload["per_page"],
+        "total": payload["total"],
+        "total_pages": payload["total_pages"],
+    }
+
+    # The type filter dropdown lists every distinct type across all
+    # devices, regardless of the current filter/pagination window.
+    all_devices = api_get("/devices")
 
     context = {
         "filters": filters,
         "sort": sort,
         "networks": networks,
-        "device_types": device_type_options(devices),
-        "pagination": page,
+        "device_types": device_type_options(all_devices),
+        "pagination": pagination,
     }
 
-    return page["items"], context
+    return result, context
 
 
 @devices_bp.get("")
