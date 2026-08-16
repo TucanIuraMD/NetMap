@@ -1,0 +1,76 @@
+{% set is_edit = interface is not none and interface.get('id') is not none %}
+
+<div class="modal-header">
+  <h5 class="modal-title">{{ 'Edit Interface' if is_edit else 'Add Interface' }}</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form hx-{{ 'put' if is_edit else 'post' }}="{{ url_for('web.devices.update_interface', device_id=device.id, interface_id=interface.id) if is_edit else url_for('web.devices.create_interface', device_id=device.id) }}"
+      hx-target="#nm-modal-content"
+      hx-swap="innerHTML">
+  <div class="modal-body">
+    {% if error %}
+    <div class="alert alert-danger py-2">{{ error }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label">Name *</label>
+      <input type="text" name="name" class="form-control" required
+             value="{{ interface.name if interface else '' }}"
+             placeholder="eth0, ens18, wlan0…">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Interface Type</label>
+      <select name="interface_type" class="form-select">
+        <option value="">—</option>
+        {% for t in interface_types %}
+        <option value="{{ t }}" {{ 'selected' if interface and interface.interface_type == t }}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">MAC Address</label>
+        <input type="text" name="mac_address" class="form-control nm-mono"
+               value="{{ interface.mac_address if interface and interface.mac_address else '' }}"
+               placeholder="aa:bb:cc:dd:ee:ff">
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Speed (Mbps)</label>
+        <input type="number" name="speed" min="1" class="form-control"
+               value="{{ interface.speed if interface and interface.speed else '' }}">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">MTU</label>
+        <input type="number" name="mtu" min="1" class="form-control"
+               value="{{ interface.mtu if interface and interface.mtu else '' }}">
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Status</label>
+        <div class="form-check form-switch mt-2">
+          <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="interface-is-active"
+                 {{ 'checked' if interface is none or interface.is_active }}>
+          <label class="form-check-label" for="interface-is-active">Active</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Description</label>
+      <textarea name="description" class="form-control" rows="2">{{ interface.description if interface and interface.description else '' }}</textarea>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary">
+      <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+      Save
+    </button>
+  </div>
+</form>

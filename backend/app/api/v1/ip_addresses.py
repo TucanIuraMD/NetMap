@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from ...extensions import db
 from ...models.interface import Interface
 from ...models.ip_address import IPAddress
+from .validation import validate_ip_address
 
 
 ip_addresses_bp = Blueprint(
@@ -77,6 +78,10 @@ def create_ip_address():
     if interface is None:
         return jsonify({"error": "Interface not found"}), 404
 
+    address, error = validate_ip_address(address, version)
+    if error:
+        return jsonify({"error": error}), 400
+
     if IPAddress.query.filter_by(
         interface_id=interface_id,
         address=address,
@@ -122,10 +127,12 @@ def update_ip_address(ip_address_id: int):
         ip_address.interface_id = interface_id
 
     if "address" in data:
-        address = data["address"]
-
-        if not address:
-            return jsonify({"error": "address cannot be empty"}), 400
+        address, error = validate_ip_address(
+            data["address"],
+            ip_address.version,
+        )
+        if error:
+            return jsonify({"error": error}), 400
 
         existing = IPAddress.query.filter(
             IPAddress.interface_id == ip_address.interface_id,
@@ -147,6 +154,13 @@ def update_ip_address(ip_address_id: int):
             return jsonify({
                 "error": "version must be 4 or 6"
             }), 400
+
+        address, error = validate_ip_address(
+            ip_address.address,
+            version,
+        )
+        if error:
+            return jsonify({"error": error}), 400
 
         ip_address.version = version
 

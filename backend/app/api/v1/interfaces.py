@@ -3,6 +3,11 @@ from flask import Blueprint, jsonify, request
 from ...extensions import db
 from ...models.device import Device
 from ...models.interface import Interface
+from .validation import (
+    validate_interface_type,
+    validate_mac_address,
+    validate_positive_int,
+)
 
 
 interfaces_bp = Blueprint(
@@ -81,13 +86,31 @@ def create_interface():
             "error": "Interface with this name already exists for this device"
         }), 409
 
+    interface_type, error = validate_interface_type(
+        data.get("interface_type")
+    )
+    if error:
+        return jsonify({"error": error}), 400
+
+    mac_address, error = validate_mac_address(data.get("mac_address"))
+    if error:
+        return jsonify({"error": error}), 400
+
+    speed, error = validate_positive_int(data.get("speed"), "speed")
+    if error:
+        return jsonify({"error": error}), 400
+
+    mtu, error = validate_positive_int(data.get("mtu"), "mtu")
+    if error:
+        return jsonify({"error": error}), 400
+
     interface = Interface(
         device_id=device_id,
         name=name,
-        mac_address=data.get("mac_address"),
-        speed=data.get("speed"),
-        mtu=data.get("mtu"),
-        interface_type=data.get("interface_type"),
+        mac_address=mac_address,
+        speed=speed,
+        mtu=mtu,
+        interface_type=interface_type,
         description=data.get("description"),
         is_active=data.get("is_active", True),
     )
@@ -143,16 +166,34 @@ def update_interface(interface_id: int):
         interface.name = name
 
     if "mac_address" in data:
-        interface.mac_address = data["mac_address"]
+        mac_address, error = validate_mac_address(data["mac_address"])
+        if error:
+            return jsonify({"error": error}), 400
+
+        interface.mac_address = mac_address
 
     if "speed" in data:
-        interface.speed = data["speed"]
+        speed, error = validate_positive_int(data["speed"], "speed")
+        if error:
+            return jsonify({"error": error}), 400
+
+        interface.speed = speed
 
     if "mtu" in data:
-        interface.mtu = data["mtu"]
+        mtu, error = validate_positive_int(data["mtu"], "mtu")
+        if error:
+            return jsonify({"error": error}), 400
+
+        interface.mtu = mtu
 
     if "interface_type" in data:
-        interface.interface_type = data["interface_type"]
+        interface_type, error = validate_interface_type(
+            data["interface_type"]
+        )
+        if error:
+            return jsonify({"error": error}), 400
+
+        interface.interface_type = interface_type
 
     if "description" in data:
         interface.description = data["description"]

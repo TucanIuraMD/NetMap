@@ -38,6 +38,18 @@ class Connection(db.Model):
         nullable=True,
     )
 
+    source_interface_id = db.Column(
+        db.Integer,
+        db.ForeignKey("interfaces.id"),
+        nullable=True,
+    )
+
+    target_interface_id = db.Column(
+        db.Integer,
+        db.ForeignKey("interfaces.id"),
+        nullable=True,
+    )
+
     description = db.Column(db.Text)
 
     is_active = db.Column(
@@ -79,6 +91,16 @@ class Connection(db.Model):
     target_port = db.relationship(
         "Port",
         foreign_keys=[target_port_id],
+    )
+
+    source_interface = db.relationship(
+        "Interface",
+        foreign_keys=[source_interface_id],
+    )
+
+    target_interface = db.relationship(
+        "Interface",
+        foreign_keys=[target_interface_id],
     )
 
     def __repr__(self) -> str:

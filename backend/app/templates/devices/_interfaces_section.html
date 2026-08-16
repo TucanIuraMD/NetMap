@@ -1,0 +1,55 @@
+{% import "_macros.html" as macros %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h6 class="mb-0">Interfaces ({{ interfaces|length }})</h6>
+  <button type="button" class="btn btn-sm btn-outline-primary"
+          hx-get="{{ url_for('web.devices.new_interface_form', device_id=device.id) }}"
+          hx-target="#nm-modal-content">
+    <i class="bi bi-plus-lg"></i> Add Interface
+  </button>
+</div>
+{% if interfaces %}
+<div class="table-responsive">
+  <table class="table table-sm nm-table">
+    <thead><tr><th>Name</th><th>Type</th><th>MAC</th><th>Speed</th><th>MTU</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+    <tbody>
+      {% for iface in interfaces %}
+      <tr>
+        <td class="nm-mono fw-semibold">{{ iface.name }}</td>
+        <td>{{ iface.interface_type or '—' }}</td>
+        <td class="nm-mono">{{ iface.mac_address or '—' }}</td>
+        <td>{{ iface.speed or '—' }}</td>
+        <td>{{ iface.mtu or '—' }}</td>
+        <td>{{ macros.active_badge(iface.is_active) }}</td>
+        <td class="text-end">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button class="dropdown-item"
+                        hx-get="{{ url_for('web.devices.edit_interface_form', device_id=device.id, interface_id=iface.id) }}"
+                        hx-target="#nm-modal-content">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button class="dropdown-item text-danger"
+                        hx-delete="{{ url_for('web.devices.delete_interface', device_id=device.id, interface_id=iface.id) }}"
+                        hx-target="#device-interfaces-section"
+                        data-nm-confirm="Удалить интерфейс «{{ iface.name }}»? IP-адреса интерфейса тоже будут удалены.">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-body-secondary">Интерфейсы не найдены.</p>
+{% endif %}

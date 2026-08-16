@@ -4,6 +4,11 @@ from ...extensions import db
 from ...models.device import Device
 from ...models.port import Port
 from ...models.service import Service
+from .validation import (
+    validate_port_number,
+    validate_port_protocol,
+    validate_port_status,
+)
 
 
 ports_bp = Blueprint(
@@ -104,6 +109,18 @@ def create_port():
     if device is None:
         return jsonify({"error": "Device not found"}), 404
 
+    port_number, error = validate_port_number(port_number)
+    if error:
+        return jsonify({"error": error}), 400
+
+    protocol, error = validate_port_protocol(protocol)
+    if error:
+        return jsonify({"error": error}), 400
+
+    status, error = validate_port_status(data.get("status", "open"))
+    if error:
+        return jsonify({"error": error}), 400
+
     service_id = data.get("service_id")
 
     if service_id is not None:
@@ -126,7 +143,7 @@ def create_port():
         service_id=service_id,
         port_number=port_number,
         protocol=protocol,
-        status=data.get("status", "open"),
+        status=status,
         display_name=data.get("display_name"),
         web_scheme=data.get("web_scheme"),
         description=data.get("description"),
@@ -172,27 +189,25 @@ def update_port(port_id: int):
         port.service_id = service_id
 
     if "port_number" in data:
-        port_number = data["port_number"]
-
-        if port_number is None:
-            return jsonify({
-                "error": "port_number cannot be empty"
-            }), 400
+        port_number, error = validate_port_number(data["port_number"])
+        if error:
+            return jsonify({"error": error}), 400
 
         port.port_number = port_number
 
     if "protocol" in data:
-        protocol = data["protocol"]
-
-        if not protocol:
-            return jsonify({
-                "error": "protocol cannot be empty"
-            }), 400
+        protocol, error = validate_port_protocol(data["protocol"])
+        if error:
+            return jsonify({"error": error}), 400
 
         port.protocol = protocol
 
     if "status" in data:
-        port.status = data["status"]
+        status, error = validate_port_status(data["status"])
+        if error:
+            return jsonify({"error": error}), 400
+
+        port.status = status
 
     if "display_name" in data:
         display_name = data["display_name"]
