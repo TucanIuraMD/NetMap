@@ -150,6 +150,7 @@ def _filtered_devices() -> tuple[list[dict], dict]:
         device["network_name"] = network["name"] if network else "—"
         device["display"] = device_display_name(device)
         device["ports_count"] = ports_count_by_device.get(device_id, 0)
+
         device["ports_preview"] = [
             {
                 "port_number": port["port_number"],
@@ -161,7 +162,7 @@ def _filtered_devices() -> tuple[list[dict], dict]:
             for port in sorted(
                 ports_by_device.get(device_id, []),
                 key=lambda p: (p.get("port_number") or 0),
-            )[:3]
+            )
         ]
 
         device_ifaces = interfaces_by_device.get(device_id, [])

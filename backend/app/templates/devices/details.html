@@ -82,6 +82,15 @@
 
 {% block extra_js %}
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+  var hash = window.location.hash;
+  if (hash && document.querySelector('[data-bs-target="' + hash + '"]')) {
+    var tabEl = document.querySelector('[data-bs-target="' + hash + '"]');
+    var tab = new bootstrap.Tab(tabEl);
+    tab.show();
+  }
+});
+
 document.getElementById("delete-device-btn").addEventListener("click", function () {
   if (!window.confirm("Удалить устройство? Связанные connections тоже будут удалены.")) {
     return;

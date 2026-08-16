@@ -22,10 +22,10 @@
   {{ sort_link('device_type', 'Type') }}
 </div>
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3" id="device-cards">
+<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 align-items-start" id="device-cards">
   {% for device in devices %}
   <div class="col">
-    <div class="card h-100 nm-device-card">
+    <div class="card nm-device-card">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div class="d-flex align-items-center gap-2">
@@ -75,7 +75,7 @@
         <div class="border-top pt-2">
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="small fw-semibold text-body-secondary">Ports ({{ device.ports_count }})</span>
-            <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}#ports"
+            <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}#tab-ports"
                class="small">Show all ({{ device.ports_count }})</a>
           </div>
           {% if device.ports_preview %}
