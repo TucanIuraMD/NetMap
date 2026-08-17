@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation updates for Monitoring Engine (README, PROJECT_STATUS, CHANGELOG, docs/)
 - TODO.md with current project status and roadmap
 
+### Added - Iteration 4: Connections and Topology
+- Connections API hardening: validation, duplicate protection, filters, pagination
+- Connections duplicate protection (`409 Conflict`) with unique endpoint constraint
+- Connections API validation (`400`/`404`) for devices, ports, interfaces and connection types
+- Connections API filters (`device_id`, `is_active`, `connection_type`) and pagination (`page`, `per_page`)
+- Topology API `GET /api/v1/topology` backed by TopologyService
+- Topology nodes (devices with interfaces/IPs/ports) and edges (real connections only)
+- Topology filters (`network_id`, `device_type`, `status`)
+- Connections UI: device filter, interface+port labels, IP display, Open in Topology
+- Topology visualization rebuilt on `GET /api/v1/topology` (Cytoscape.js, directed edges, labels, empty state)
+- Documentation: Iteration 4 added to PROJECT_STATUS, TODO, API spec
+
 ---
 
 ## [0.3.0] - 2026-08-17

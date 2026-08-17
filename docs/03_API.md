@@ -158,11 +158,11 @@ OAuth
 
 /api/v1/connections
 
+/api/v1/topology
+
 /api/v1/networks/<id>/discover
 
-**Partially Implemented:**
-
-/api/v1/imports/ports (port import, implemented but not committed)
+/api/v1/imports/ports (port import)
 
 **Planned:**
 
@@ -424,7 +424,29 @@ GET
 
 /connections
 
-Return all device connections.
+Return device connections.
+
+**Current Implementation — validation, duplicate protection, filters, pagination:**
+
+**Query Parameters:**
+
+- `device_id=<id>` — Filter by device (connection is returned when the device is the source or the target)
+- `is_active=<true|false>` — Filter by active status
+- `connection_type=<type>` — Filter by type (network, ethernet, fiber, wifi, virtual, other)
+- `page=<n>` — Page number (default: 1)
+- `per_page=<n>` — Results per page (default: 50, max: 500; alias `page_size`)
+
+**Backward compatibility:** a request with no query parameters at all returns a bare JSON array of all connections (legacy behavior). Any query parameter switches to the paginated envelope:
+
+```json
+{
+  "items": [...],
+  "page": 1,
+  "per_page": 50,
+  "total": 12,
+  "total_pages": 1
+}
+```
 
 ---
 
@@ -446,32 +468,115 @@ Request example
 
 ```json
 {
-    "source_device_id": 1,
-    "target_device_id": 3,
-    "connection_type": "network",
-    "source_port_id": null,
-    "target_port_id": null,
-    "description": "Network connection"
+  "source_device_id": 1,
+  "target_device_id": 3,
+  "connection_type": "ethernet",
+  "source_interface_id": 5,
+  "target_interface_id": 7,
+  "source_port_id": 10,
+  "target_port_id": 12,
+  "description": "Backbone link",
+  "is_active": true
 }
-PUT
-/connections/{id}
-Update a connection.
-DELETE
-/connections/{id}
-Delete a connection.
-Connection fields
-source_device_id
-target_device_id
-connection_type
-source_port_id
-target_port_id
-description
-is_active
-Connections may optionally reference source and target ports.
-Deleting a device also removes its associated connections.
-```bash
+```
 
-# 17. Discovery
+**Validation (400 Bad Request):**
+
+- JSON body is required
+- `source_device_id` and `target_device_id` are required
+- Source and target devices must differ
+- `connection_type` must be one of: network, ethernet, fiber, wifi, virtual, other (default: network)
+- Ports and interfaces must belong to their respective device
+- Source and target interfaces must differ
+
+**Validation (404 Not Found):**
+
+- Source or target device does not exist
+- Referenced port or interface does not exist
+
+**Duplicate protection (409 Conflict):**
+
+A connection is considered a duplicate when the device pair plus the optional interface/port endpoints match an existing connection. `connection_type` is deliberately not part of the identity, so the same physical link cannot be recorded twice under different types. Duplicates are rejected with `409 Conflict` ("Connection already exists"). A database unique constraint on the endpoint pair enforces the same rule at the schema level.
+
+---
+
+PUT
+
+/connections/{id}
+
+Update a connection. Accepts any subset of the connection fields; every referenced device, port and interface is validated and the duplicate check is re-run excluding the updated connection.
+
+---
+
+DELETE
+
+/connections/{id}
+
+Delete a connection.
+
+Connection fields
+
+- `source_device_id` — required
+- `target_device_id` — required
+- `connection_type` — network, ethernet, fiber, wifi, virtual, other
+- `source_interface_id` / `target_interface_id` — optional
+- `source_port_id` / `target_port_id` — optional
+- `description`
+- `is_active`
+
+Deleting a device also removes its associated connections (cascade).
+
+---
+
+# 17. Topology
+
+GET
+
+/topology
+
+Return the device/connection graph consumed by the `/topology` page.
+
+**Current Implementation:**
+
+Response shape:
+
+```json
+{
+  "nodes": [...],
+  "edges": [...]
+}
+```
+
+**Nodes** are devices. Each node `data` block contains:
+
+- `id` — `"device-{id}"`
+- `deviceId` — numeric device id
+- `label` — `display_name` or `name`
+- `isActive` — boolean
+- `linked` — true when the device has at least one connection inside the filtered node set
+- `device` — full device record
+- `interfaces` — interfaces, each with its nested `ip_addresses`
+- `ports` — ports
+
+**Edges** are derived strictly from existing Connection records — no synthetic links are ever fabricated, and every connection maps to exactly one edge. An edge is included only when both endpoints are part of the filtered node set. Each edge `data` block contains:
+
+- `id` — `"conn-{id}"`
+- `source` / `target` — `"device-{id}"` node references
+- `type` — connection type
+- `label` — interface-based label (e.g. `eth0 → eth1`); generic interface names are rendered as `iface {id}`
+- `connection` — full connection record (source/target device, interface and port ids)
+
+**Query Parameters:**
+
+- `network_id=<id>` — Include devices of a single network
+- `device_type=<type>` — Include devices with the exact device type
+- `status=<active|inactive>` — Filter by device active status
+
+**Note:** the server edge `label` is interface-based only. The client (`static/js/topology.js`) builds the final label, adding the port when available (e.g. `eth0 · 80/tcp (HTTP) → eth0 · 80/tcp (HTTP)`).
+
+---
+
+# 18. Discovery
 
 **Current Implementation:**
 
@@ -518,7 +623,7 @@ GET /api/v1/discovery/results — Get latest discovery results
 
 ---
 
-# 18. Monitoring
+# 19. Monitoring
 
 **Status:** Implemented (background service)
 
@@ -547,7 +652,7 @@ GET /monitoring/stats — Get monitoring statistics
 
 ---
 
-# 19. History
+# 20. History
 
 GET
 
@@ -571,7 +676,7 @@ Example
 
 ---
 
-# 20. Settings
+# 21. Settings
 
 GET
 
@@ -583,7 +688,7 @@ PUT
 
 ---
 
-# 21. Search
+# 22. Search
 
 Universal search.
 
@@ -603,7 +708,7 @@ Services
 
 ---
 
-# 22. Pagination
+# 23. Pagination
 
 Supported by all list endpoints.
 
@@ -623,7 +728,7 @@ Maximum
 
 ---
 
-# 23. Filtering
+# 24. Filtering
 
 Examples
 
@@ -643,7 +748,7 @@ Multiple filters are allowed.
 
 ---
 
-# 24. Sorting
+# 25. Sorting
 
 Examples
 
@@ -659,7 +764,7 @@ Descending
 
 ---
 
-# 25. API Versioning
+# 26. API Versioning
 
 Current
 
@@ -673,7 +778,7 @@ Older versions remain supported whenever possible.
 
 ---
 
-# 26. Error Codes
+# 27. Error Codes
 
 DEVICE_NOT_FOUND
 
@@ -697,7 +802,7 @@ INTERNAL_ERROR
 
 ---
 
-# 27. Performance
+# 28. Performance
 
 All list endpoints must support
 
@@ -713,7 +818,7 @@ No endpoint may return unlimited data.
 
 ---
 
-# 28. Logging
+# 29. Logging
 
 Every API request is logged.
 
@@ -733,15 +838,13 @@ IP Address
 
 ---
 
-# 29. Future API
+# 30. Future API
 
 Reserved for Version 2
 
 /api/v2/assets
 
 /api/v2/snmp
-
-/api/v2/topology
 
 /api/v2/plugins
 
@@ -751,7 +854,7 @@ Reserved for Version 2
 
 ---
 
-# 30. API Philosophy
+# 31. API Philosophy
 
 The API is the public interface of NetMap.
 

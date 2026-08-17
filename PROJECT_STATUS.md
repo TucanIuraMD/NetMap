@@ -9,7 +9,7 @@
 
 ## Current State
 
-NetMap has completed **Iteration 1 (Foundation)**, **Iteration 2 (Interfaces/IP/Ports/Connections)**, and **Iteration 3 (Monitoring Engine)**, and is now a functional network infrastructure inventory, discovery, and monitoring platform with a polished Web UI and automatic availability checks.
+NetMap has completed **Iteration 1 (Foundation)**, **Iteration 2 (Interfaces/IP/Ports/Connections)**, **Iteration 3 (Monitoring Engine)**, and **Iteration 4 (Connections and Topology)**, and is now a functional network infrastructure inventory, discovery, and monitoring platform with a polished Web UI, automatic availability checks, hardened connections management, and a rebuilt topology visualization driven by a dedicated topology API.
 
 ---
 
@@ -105,31 +105,78 @@ Automatic device availability monitoring:
 
 ### ✅ Port Import — Bulk Operations
 
-**Status:** Implemented (not committed)
+**Status:** Complete
 **Completed:** 2026-08
+**Commit:** `358aa40 feat: add port import API`
 
 Bulk port import feature:
 - `POST /api/v1/imports/ports` endpoint
-- JSON batch import
-- Duplicate prevention
+- JSON batch import (`{"items": [...]}`)
+- Device resolution by ID or IP
+- Duplicate prevention (already-existing ports are skipped)
 - Automatic service detection
 - Standard service mapping
 - Auto-marker (`description='import:auto'`)
 
 **Files:**
-- `backend/app/api/v1/imports.py` (untracked)
-- `backend/app/services/port_import.py` (untracked)
-- `backend/app/api/v1/__init__.py` (modified, not committed)
+- `backend/app/api/v1/imports.py`
+- `backend/app/services/port_import.py`
+
+---
+
+### ✅ Iteration 4 — Connections and Topology
+
+**Status:** Complete
+**Completed:** 2026-08-17
+**Commits:**
+- `ca5bcb4` feat: validate and harden connections API
+- `1230db3` feat: add topology API and service
+- `985c8f4` feat: improve connections UI
+- `fcd98d3` feat: rebuild topology visualization
+
+**Connections API hardening (`ca5bcb4`):**
+- Input validation: required source/target devices, distinct devices, `connection_type` whitelist, port/interface ownership checks
+- Validation errors: `400` (bad input, foreign port/interface, same device) and `404` (missing device/port/interface)
+- Duplicate protection: `409 Conflict` when the device pair plus optional interface/port endpoints already exist; `connection_type` is not part of the identity
+- Database unique constraint on connection endpoints (`unique_connection_endpoints` migration)
+- Filters: `device_id` (source or target), `is_active`, `connection_type`
+- Pagination: `page`, `per_page` (default 50, max 500, alias `page_size`) with a paginated envelope `{items, page, per_page, total, total_pages}`
+- Backward compatibility: a request without query parameters returns a bare JSON array (legacy behavior)
+
+**Topology API + service (`1230db3`):**
+- `GET /api/v1/topology` endpoint backed by `TopologyService`
+- Nodes = real devices with attached interfaces (and their IP addresses) and ports
+- Edges = derived strictly from existing Connection records — no synthetic links, one edge per connection
+- Edge only included when both endpoints are part of the filtered node set
+- Filters: `network_id`, `device_type`, `status` (`active`/`inactive`)
+- Response shape: `{nodes: [...], edges: [...]}` with Cytoscape-ready `data` blocks
+
+**Connections UI (`985c8f4`):**
+- Device filter on the connections list page (HTMX-driven table refresh)
+- Interface and port shown together on each end of a connection
+- Primary IP display per connection end
+- "Open in Topology" action linking back to the topology graph
+- Updated create/edit forms with cascading interface/port selects
+
+**Topology visualization (`fcd98d3`):**
+- Client rebuilt to fetch data **only** from `GET /api/v1/topology` (filters applied as query parameters on that same endpoint)
+- Device labels: `display_name` / hostname / name, with primary IP as subtitle
+- Edge labels include interface and port when available (e.g. `eth0 · 80/tcp (HTTP) → eth0 · 80/tcp (HTTP)`)
+- Directed edges (arrow heads), color/line-style by connection type
+- `cose` layout with fit/reload/toggle-unlinked controls and Reset button
+- Empty state handled gracefully (no JS errors)
+- Tap on node opens details panel with link to the device page
 
 ---
 
 ## Current Data State
 
-**Devices:** 41
-**Networks:** 2 (192.168.88.0/24, 192.168.80.0/24)
-**Ports:** 71
+**Devices:** 42
+**Networks:** 2 (Work 192.168.80.0/24, Home 192.168.88.1/24)
+**Ports:** 72
 **Services:** 8
-**Device Types in use:** lxc, router, test, unknown
+**Connections:** 2
+**Device Types in use:** router, unknown, lxc, test
 
 **Example Device:**
 - `docker.local` (192.168.80.16): 12 ports, 9 services
@@ -278,7 +325,9 @@ POST   /api/v1/connections
 PUT    /api/v1/connections/<id>
 DELETE /api/v1/connections/<id>
 
-POST   /api/v1/imports/ports  (not committed)
+GET    /api/v1/topology
+
+POST   /api/v1/imports/ports
 ```
 
 ### API Features
@@ -292,6 +341,20 @@ POST   /api/v1/imports/ports  (not committed)
 - `?page=<n>` — Pagination page number
 - `?per_page=<n>` — Results per page (default: 50)
 
+**Connections endpoint** supports:
+- `?device_id=<id>` — Filter by device (source or target)
+- `?is_active=<true|false>` — Filter by active status
+- `?connection_type=<type>` — Filter by type (network, ethernet, fiber, wifi, virtual, other)
+- `?page=<n>` — Pagination page number
+- `?per_page=<n>` — Results per page (default: 50, max: 500, alias `page_size`)
+- Validation: `400` for bad input and foreign ports/interfaces, `404` for missing references
+- Duplicate protection: `409 Conflict` when the endpoint pair already exists
+
+**Topology endpoint** (`GET /api/v1/topology`) supports:
+- `?network_id=<id>` — Include devices of a single network
+- `?device_type=<type>` — Include devices with the exact device type
+- `?status=<active|inactive>` — Filter by active status
+
 ---
 
 ## Web UI
@@ -304,8 +367,8 @@ POST   /api/v1/imports/ports  (not committed)
 - `/devices/<id>` — Device details (Overview, Network, Interfaces/IP, Services, Connections)
 - `/networks` — Network list with CRUD
 - `/networks/<id>` — Network details with Discovery
-- `/connections` — Connection list with CRUD
-- `/topology` — Interactive graph visualization
+- `/connections` — Connection list with CRUD, device filter
+- `/topology` — Interactive graph visualization with network/type/status filters
 - `/discovery` — Discovery interface (redirects to Networks)
 
 ### UI Features
@@ -426,7 +489,11 @@ NetMap recognizes standard services and generates Web URLs:
 - [x] Standard service names and web URLs
 - [x] Device Types (LXC, VM, ZigBee)
 - [x] Iteration 3: Monitoring Engine (ICMP ping + TCP fallback, APScheduler)
-- [x] Port Import API (implemented, not committed)
+- [x] Port Import API (bulk `POST /api/v1/imports/ports`)
+- [x] Iteration 4: Connections API hardening (validation, duplicate protection, filters, pagination)
+- [x] Iteration 4: Topology API + TopologyService (`GET /api/v1/topology`)
+- [x] Iteration 4: Connections UI (device filter, interface+port labels, Open in Topology)
+- [x] Iteration 4: Topology visualization on Cytoscape.js (directed edges, labels, filters, empty state)
 
 ### 📋 Next Steps
 
@@ -436,7 +503,7 @@ NetMap recognizes standard services and generates Web URLs:
 4. **Alert System** — Notifications on device status changes
 5. **Sites CRUD UI** — Dedicated page for Sites management
 6. **Service Detection** — Enhanced automatic service identification
-7. **Topology Enhancements** — Layouts, filters, export
+7. **Topology Enhancements** — Additional layouts, export (PNG/SVG/PDF), node grouping
 8. **Infrastructure Integrations** — MikroTik, Proxmox, Docker APIs
 9. **PostgreSQL Deployment** — Production database setup
 10. **Multi-user & RBAC** — Authentication and authorization
@@ -457,26 +524,19 @@ NetMap recognizes standard services and generates Web URLs:
 ## Git Status
 
 **Branch:** `main`
-**Ahead of origin:** 2 commits
 
-**Last commits:**
+**Last commits (Iteration 4):**
 ```
-34c5d46 fix: show all device ports in cards
-b5d81eb feat: API-side filtering/sorting/pagination for devices
-9e27ddd fix: polish NetMap UI ports and interfaces
+fcd98d3 feat: rebuild topology visualization
+985c8f4 feat: improve connections UI
+1230db3 feat: add topology API and service
+ca5bcb4 feat: validate and harden connections API
 ```
 
 **Uncommitted changes:**
-- Modified: 15 files (documentation, templates, web routes, config, scheduler)
-- Untracked: 5 files (imports API, port_import service, monitoring_service, scheduler, opencode.json)
+- None in tracked files. `opencode.json` is untracked and intentionally not committed.
 
-**Changes include:**
-- Monitoring Engine (MonitoringService, APScheduler)
-- Device Types: LXC, VM, ZigBee with labels
-- Services terminology (Ports → Services)
-- Final device cards UI (3-column grid, full Services list, auto-height)
-- Port import API (not committed)
-- Documentation updates (README, PROJECT_STATUS, CHANGELOG, TODO, docs/)
+**Note:** this status document is itself pending commit together with the Iteration 4 documentation update.
 
 ---
 

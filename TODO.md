@@ -48,21 +48,27 @@
 - [x] Device cards UI polish (3-column grid, full Services list, auto-height)
 
 ### Port Import
-- [x] Port Import API endpoint (implemented, not committed)
+- [x] Port Import API endpoint (`POST /api/v1/imports/ports`)
 - [x] Bulk port import service
 - [x] Device resolution (ID/IP/name/hostname)
 - [x] Duplicate prevention
 - [x] Standard service mapping
 
+### Iteration 4 — Connections and Topology
+- [x] Connections API hardening (validation, duplicate protection, filters, pagination)
+- [x] Connections duplicate protection (409) with unique endpoint constraint
+- [x] Connections API filters (`device_id`, `is_active`, `connection_type`)
+- [x] Connections API pagination (`page`, `per_page`)
+- [x] Topology API `GET /api/v1/topology` + TopologyService
+- [x] Topology filters (`network_id`, `device_type`, `status`)
+- [x] Connections UI (device filter, interface+port labels, Open in Topology)
+- [x] Topology visualization rebuilt on the topology API (Cytoscape.js)
+
 ---
 
 ## 🔄 In Progress
 
-### Documentation
-- [ ] Commit Monitoring Engine changes
-- [ ] Commit Port Import API
-- [ ] Commit Device Types updates
-- [ ] Commit UI polish changes
+- None. Iteration 4 is complete; the next iteration is **Async Discovery** (see Current Focus).
 
 ---
 
@@ -121,12 +127,12 @@
 - [ ] Custom service definitions
 
 ### Topology Enhancements
+- [x] Topology filters (by network, device type, status)
+- [x] Edge labels (interface, port when available)
 - [ ] Multiple layout algorithms (hierarchical, circular, grid)
-- [ ] Topology filters (by network, device type, status)
 - [ ] Topology export (PNG, SVG, PDF)
 - [ ] Topology zoom/pan improvements
 - [ ] Node grouping by network/site
-- [ ] Edge labels (connection type, bandwidth)
 
 ---
 
@@ -248,15 +254,17 @@
 - No latency/packet loss tracking yet
 
 ### Topology
-- Limited layout options
-- No filtering or grouping
+- Limited layout options (single `cose` layout)
 - No export functionality
+- No grouping by network/site
 
 ---
 
 ## 🎯 Current Focus
 
-**Iteration 4 Target:** Async Discovery + Monitoring History
+**Iteration 4 (Connections and Topology):** Complete — Connections API hardening, Topology API, Connections UI, Topology visualization.
+
+**Next Iteration Target:** Async Discovery + Monitoring History
 
 **Key Goals:**
 1. Non-blocking discovery with progress API
@@ -270,9 +278,10 @@
 
 ## 📝 Notes
 
-- **Port Import API** is implemented but not committed. Needs testing and documentation before merge.
+- **Iteration 4** (Connections and Topology) is complete: commits `ca5bcb4`, `1230db3`, `985c8f4`, `fcd98d3`.
+- **Port Import API** is implemented and committed (`358aa40`).
 - **Monitoring Engine** is fully functional and running in production.
-- **Device Types** (LXC, VM, ZigBee) are implemented but not committed.
+- **Device Types** (LXC, VM, ZigBee) are implemented and committed.
 - **APScheduler** is integrated and working correctly.
 
 ---
