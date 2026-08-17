@@ -1,9 +1,12 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, current_app, jsonify
 
 from ...extensions import db
 from ...models.network import Network
 from ...services.discovery_service import DiscoveryService
-from ...services.network_scanner import NetworkScanner
+from ...services.network_scanner import (
+    DiscoveryRangeError,
+    NetworkScanner,
+)
 
 
 discovery_bp = Blueprint(
@@ -23,8 +26,17 @@ def discover_network(network_id: int):
     if not network.is_active:
         return jsonify({"error": "Network is inactive"}), 400
 
-    scanner = NetworkScanner()
-    hosts = scanner.scan_network(network.cidr)
+    scanner = NetworkScanner(
+        timeout=current_app.config["DISCOVERY_TCP_TIMEOUT"],
+        workers=current_app.config["DISCOVERY_WORKERS"],
+        icmp_timeout=current_app.config["DISCOVERY_ICMP_TIMEOUT"],
+        max_hosts=current_app.config["DISCOVERY_MAX_HOSTS"],
+    )
+
+    try:
+        hosts = scanner.scan_network(network.cidr)
+    except DiscoveryRangeError as exc:
+        return jsonify({"error": str(exc)}), 400
 
     service = DiscoveryService(network)
     devices = service.sync_hosts(hosts)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ipaddress
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -12,7 +11,11 @@ from app.extensions import db
 from app.models.device import Device
 from app.models.network import Network
 from app.services.discovery_service import DiscoveryService
-from app.services.network_scanner import DiscoveredHost, NetworkScanner
+from app.services.network_scanner import (
+    DiscoveredHost,
+    NetworkScanner,
+    count_hosts,
+)
 
 
 class DiscoveryJobError(Exception):
@@ -21,6 +24,10 @@ class DiscoveryJobError(Exception):
 
 class JobConflictError(DiscoveryJobError):
     """Raised when a new job cannot start because one is already running."""
+
+
+class DiscoveryLimitError(DiscoveryJobError):
+    """Raised when a network exceeds the configured host limit."""
 
 
 def _iso(value: datetime | None) -> str | None:
@@ -105,14 +112,33 @@ class DiscoveryJobManager:
     def start(self, network_id: int) -> DiscoveryJob:
         """Start a background discovery job for a network.
 
-        Raises ``JobConflictError`` when another job is still running.
+        Raises ``JobConflictError`` when another job is still running and
+        ``DiscoveryLimitError`` when the network exceeds the host limit.
         """
+        app = self._app
+
         with self._lock:
             if self._active_network_id is not None:
                 raise JobConflictError(
                     "A discovery job is already running for network "
                     f"{self._active_network_id}"
                 )
+
+            max_hosts = (
+                app.config["DISCOVERY_MAX_HOSTS"]
+                if app is not None
+                else 1024
+            )
+
+            if app is not None:
+                with app.app_context():
+                    network = db.session.get(Network, network_id)
+
+                    if network is not None and count_hosts(network.cidr) > max_hosts:
+                        raise DiscoveryLimitError(
+                            f"Network {network.cidr} exceeds the maximum "
+                            f"allowed size of {max_hosts} hosts"
+                        )
 
             job = DiscoveryJob(
                 network_id=network_id,
@@ -171,9 +197,14 @@ class DiscoveryJobManager:
                     self._fail(job, "Network not found")
                     return
 
-                job.total_hosts = self._count_hosts(network.cidr)
+                job.total_hosts = count_hosts(network.cidr)
 
-                scanner = self.scanner or NetworkScanner()
+                scanner = self.scanner or NetworkScanner(
+                    timeout=app.config["DISCOVERY_TCP_TIMEOUT"],
+                    workers=app.config["DISCOVERY_WORKERS"],
+                    icmp_timeout=app.config["DISCOVERY_ICMP_TIMEOUT"],
+                    max_hosts=app.config["DISCOVERY_MAX_HOSTS"],
+                )
                 hosts = self._scan(job, scanner, network.cidr)
 
                 if hosts is None:
@@ -244,7 +275,7 @@ class DiscoveryJobManager:
             "ip_address": host.ip_address,
             "hostname": host.hostname,
             "open_ports": host.open_ports,
-            "reachable": bool(host.open_ports),
+            "reachable": host.reachable,
             "device_id": None,
         }
 
@@ -300,8 +331,3 @@ class DiscoveryJobManager:
             job.phase = "done"
             job.error = message
             job.finished_at = datetime.utcnow()
-
-    @staticmethod
-    def _count_hosts(cidr: str) -> int:
-        network = ipaddress.ip_network(cidr, strict=False)
-        return max(network.num_addresses - 2, 0)

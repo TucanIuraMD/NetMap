@@ -2,7 +2,11 @@ from flask import Blueprint, current_app, jsonify, request
 
 from ...extensions import db
 from ...models.network import Network
-from ...services.discovery_job_manager import JobConflictError
+from ...services.discovery_job_manager import (
+    DiscoveryLimitError,
+    JobConflictError,
+)
+from ...services.network_scanner import count_hosts
 
 discovery_jobs_bp = Blueprint(
     "discovery_jobs",
@@ -32,6 +36,30 @@ def _parse_network_id(data: dict) -> tuple[int | None, tuple | None]:
     return network.id, None
 
 
+def _validate_range(network: Network) -> tuple | None:
+    try:
+        size = count_hosts(network.cidr)
+    except ValueError:
+        return (jsonify({"error": f"Invalid CIDR: {network.cidr}"}), 400)
+
+    max_hosts = current_app.config["DISCOVERY_MAX_HOSTS"]
+
+    if size > max_hosts:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        f"Network {network.cidr} is too large: {size} hosts "
+                        f"exceed the maximum of {max_hosts} hosts"
+                    )
+                }
+            ),
+            400,
+        )
+
+    return None
+
+
 @discovery_jobs_bp.post("/start")
 def start_discovery():
     data = request.get_json(silent=True) or {}
@@ -41,10 +69,17 @@ def start_discovery():
     if error is not None:
         return error
 
+    network = db.session.get(Network, network_id)
+    error = _validate_range(network)
+
+    if error is not None:
+        return error
+
     try:
         job = _manager().start(network_id)
-    except JobConflictError as exc:
-        return jsonify({"error": str(exc)}), 409
+    except (JobConflictError, DiscoveryLimitError) as exc:
+        status_code = 409 if isinstance(exc, JobConflictError) else 400
+        return jsonify({"error": str(exc)}), status_code
 
     return jsonify(job.to_dict()), 202
 
