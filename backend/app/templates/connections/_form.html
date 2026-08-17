@@ -69,10 +69,10 @@
 
     <details class="mb-3"
             {{ 'open' if (connection and (connection.source_port_id or connection.target_port_id)) }}>
-      <summary class="text-body-secondary small">Legacy port-based fields (advanced)</summary>
+      <summary class="text-body-secondary small">Ports (optional)</summary>
       <div class="row mt-2">
         <div class="col-md-6 mb-3">
-          <label class="form-label">Source Port <span class="text-body-secondary small">(legacy)</span></label>
+          <label class="form-label">Source Port</label>
           <select name="source_port_id" id="source-port-select" class="form-select">
             {% with ports=source_ports, selected_id=(connection.source_port_id if connection else none) %}
             {% include "connections/_port_options.html" %}
@@ -80,7 +80,7 @@
           </select>
         </div>
         <div class="col-md-6 mb-3">
-          <label class="form-label">Target Port <span class="text-body-secondary small">(legacy)</span></label>
+          <label class="form-label">Target Port</label>
           <select name="target_port_id" id="target-port-select" class="form-select">
             {% with ports=target_ports, selected_id=(connection.target_port_id if connection else none) %}
             {% include "connections/_port_options.html" %}

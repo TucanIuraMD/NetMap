@@ -13,8 +13,17 @@ from app.api.v1.validation import CONNECTION_TYPES
 connections_bp = Blueprint("connections", __name__, url_prefix="/connections")
 
 
-def _connections_with_names() -> list[dict]:
-    connections = api_get("/connections")
+def _connections_with_names(
+    device_id: int | None = None,
+) -> list[dict]:
+    params = {"device_id": device_id} if device_id else None
+    connections = api_get("/connections", params=params)
+
+    # With query parameters the API returns a paginated envelope
+    # ({items, ...}); without any it returns a bare array.
+    if isinstance(connections, dict):
+        connections = connections["items"]
+
     devices_by_id = index_by_id(api_get("/devices"))
     ports_by_id = index_by_id(api_get("/ports"))
     interfaces_by_id = index_by_id(api_get("/interfaces"))
@@ -63,16 +72,42 @@ def _connections_with_names() -> list[dict]:
         connection["target_port_label"] = port_label(target_port)
         connection["source_interface_label"] = interface_label(source_interface)
         connection["target_interface_label"] = interface_label(target_interface)
+        connection["source_ip"] = (
+            primary_ip_by_interface.get(
+                connection["source_interface_id"]
+            )
+            if connection.get("source_interface_id") else None
+        )
+        connection["target_ip"] = (
+            primary_ip_by_interface.get(
+                connection["target_interface_id"]
+            )
+            if connection.get("target_interface_id") else None
+        )
 
     return connections
 
 
 @connections_bp.get("")
 def list_connections():
+    device_id = request.args.get("device_id", type=int)
+    devices = api_get("/devices")
     return render_template(
         "connections/list.html",
-        connections=_connections_with_names(),
+        connections=_connections_with_names(device_id),
+        devices=devices,
+        selected_device_id=device_id,
         active_page="connections",
+    )
+
+
+@connections_bp.get("/table")
+def connections_table():
+    """Partial table used by the device filter via hx-get."""
+    device_id = request.args.get("device_id", type=int)
+    return render_template(
+        "connections/_table.html",
+        connections=_connections_with_names(device_id),
     )
 
 
@@ -197,6 +232,11 @@ def _connection_form_payload() -> dict:
     }
 
 
+def _current_device_filter() -> int | None:
+    """Keep the active device filter across table refreshes."""
+    return request.args.get("device_id", type=int)
+
+
 @connections_bp.post("")
 def create_connection():
     payload = _connection_form_payload()
@@ -218,7 +258,7 @@ def create_connection():
         ), exc.status_code
 
     response = render_template(
-        "connections/_table.html", connections=_connections_with_names()
+        "connections/_table.html", connections=_connections_with_names(_current_device_filter())
     )
     return response, 200, {"HX-Trigger": "connection-saved"}
 
@@ -245,7 +285,7 @@ def update_connection(connection_id: int):
         ), exc.status_code
 
     response = render_template(
-        "connections/_table.html", connections=_connections_with_names()
+        "connections/_table.html", connections=_connections_with_names(_current_device_filter())
     )
     return response, 200, {"HX-Trigger": "connection-saved"}
 
@@ -261,5 +301,5 @@ def delete_connection(connection_id: int):
         )
 
     return render_template(
-        "connections/_table.html", connections=_connections_with_names()
+        "connections/_table.html", connections=_connections_with_names(_current_device_filter())
     )

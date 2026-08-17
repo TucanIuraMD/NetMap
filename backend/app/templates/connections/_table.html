@@ -4,7 +4,7 @@
 <div class="table-responsive">
   <table class="table table-hover nm-table">
     <thead>
-      <tr><th>Connection</th><th>Ports</th><th>Type</th><th>Description</th><th>Status</th><th class="text-end">Actions</th></tr>
+      <tr><th>Connection</th><th>Type</th><th>Description</th><th>Status</th><th class="text-end">Actions</th></tr>
     </thead>
     <tbody>
       {% for c in connections %}
@@ -16,6 +16,12 @@
               {% if c.source_interface_label %}
               <div class="nm-mono small text-body-secondary"><i class="bi bi-ethernet"></i> {{ c.source_interface_label }}</div>
               {% endif %}
+              {% if c.source_ip %}
+              <div class="nm-mono small text-body-secondary"><i class="bi bi-globe2"></i> {{ c.source_ip }}</div>
+              {% endif %}
+              {% if c.source_port_label %}
+              <div class="nm-mono small text-body-secondary"><i class="bi bi-hdd"></i> {{ c.source_port_label }}</div>
+              {% endif %}
             </div>
             <i class="bi bi-arrow-right nm-connection-arrow"></i>
             <div class="nm-connection-endpoint">
@@ -23,10 +29,15 @@
               {% if c.target_interface_label %}
               <div class="nm-mono small text-body-secondary"><i class="bi bi-ethernet"></i> {{ c.target_interface_label }}</div>
               {% endif %}
+              {% if c.target_ip %}
+              <div class="nm-mono small text-body-secondary"><i class="bi bi-globe2"></i> {{ c.target_ip }}</div>
+              {% endif %}
+              {% if c.target_port_label %}
+              <div class="nm-mono small text-body-secondary"><i class="bi bi-hdd"></i> {{ c.target_port_label }}</div>
+              {% endif %}
             </div>
           </div>
         </td>
-        <td class="nm-mono small">{{ c.source_port_label or '—' }} → {{ c.target_port_label or '—' }}</td>
         <td>{{ c.connection_type }}</td>
         <td>{{ c.description or '—' }}</td>
         <td>{{ macros.active_badge(c.is_active) }}</td>
@@ -36,6 +47,12 @@
               <i class="bi bi-three-dots"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('web.topology.topology_view') }}">
+                  <i class="bi bi-share"></i> Open in Topology
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
               <li>
                 <button class="dropdown-item"
                         hx-get="{{ url_for('web.connections.edit_connection_form', connection_id=c.id) }}"

@@ -11,6 +11,26 @@
 {% endblock %}
 
 {% block content %}
+<form class="row g-2 mb-3 align-items-center"
+      hx-get="{{ url_for('web.connections.connections_table') }}"
+      hx-target="#connections-table-wrapper"
+      hx-trigger="change from:#connection-device-filter"
+      hx-push-url="true">
+  <div class="col-auto">
+    <select name="device_id" id="connection-device-filter" class="form-select form-select-sm nm-filter">
+      <option value="">All devices</option>
+      {% for device in devices %}
+      <option value="{{ device.id }}" {{ 'selected' if selected_device_id|string == device.id|string }}>
+        {{ device.display_name or device.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <a href="{{ url_for('web.connections.list_connections') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+  </div>
+</form>
+
 <div id="connections-table-wrapper">
   {% include "connections/_table.html" %}
 </div>
