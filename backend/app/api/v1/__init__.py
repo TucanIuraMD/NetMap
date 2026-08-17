@@ -11,6 +11,7 @@ from .ports import ports_bp
 from .services import services_bp
 from .connections import connections_bp
 from .discovery import discovery_bp
+from .imports import imports_bp
 
 api_v1.register_blueprint(sites_bp)
 api_v1.register_blueprint(networks_bp)
@@ -21,3 +22,4 @@ api_v1.register_blueprint(ports_bp)
 api_v1.register_blueprint(services_bp)
 api_v1.register_blueprint(connections_bp)
 api_v1.register_blueprint(discovery_bp)
+api_v1.register_blueprint(imports_bp)
