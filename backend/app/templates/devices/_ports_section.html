@@ -1,6 +1,6 @@
 {% import "_macros.html" as macros %}
 <div class="d-flex justify-content-between align-items-center mb-2">
-  <h6 class="mb-0"><i class="bi bi-hdd-network"></i> Service Ports ({{ ports|length }})</h6>
+  <h6 class="mb-0"><i class="bi bi-hdd-network"></i> Services ({{ ports|length }})</h6>
   <button type="button" class="btn btn-sm btn-outline-primary"
           hx-get="{{ url_for('web.devices.new_port_form', device_id=device.id) }}"
           hx-target="#nm-modal-content">

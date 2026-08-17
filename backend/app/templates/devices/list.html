@@ -36,7 +36,7 @@
     <select name="device_type" class="form-select form-select-sm nm-filter">
       <option value="">All types</option>
       {% for t in device_types %}
-      <option value="{{ t }}" {{ 'selected' if filters.device_type == t }}>{{ t }}</option>
+      <option value="{{ t }}" {{ 'selected' if filters.device_type == t }}>{{ device_type_labels.get(t, t) }}</option>
       {% endfor %}
     </select>
   </div>

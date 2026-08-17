@@ -22,10 +22,10 @@
   {{ sort_link('device_type', 'Type') }}
 </div>
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 align-items-start" id="device-cards">
+<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3" id="device-cards">
   {% for device in devices %}
   <div class="col">
-    <div class="card nm-device-card">
+    <div class="card h-100 nm-device-card">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div class="d-flex align-items-center gap-2">
@@ -62,7 +62,7 @@
           </div>
           <div class="col-3">
             <div class="nm-device-stat-value">{{ device.ports_count }}</div>
-            <div class="nm-device-stat-label">Ports</div>
+            <div class="nm-device-stat-label">Services</div>
           </div>
           <div class="col-3">
             <div class="nm-device-stat-value {{ 'text-body-secondary' if device.connections_count == 0 }}">
@@ -72,90 +72,56 @@
           </div>
         </div>
 
-        <div class="border-top pt-2">
-          <div class="d-flex justify-content-between align-items-center mb-1">
-            <span class="small fw-semibold text-body-secondary">Ports ({{ device.ports_count }})</span>
-            <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}#tab-ports"
-               class="small">Show all ({{ device.ports_count }})</a>
-          </div>
-          {% if device.ports_preview %}
-          <ul class="list-unstyled small mb-0 nm-ports-preview">
-            {% for port in device.ports_preview %}
-            <li class="d-flex justify-content-between align-items-center gap-2">
-              <span class="d-flex align-items-baseline gap-1">
-                {% if port.service_name %}
-                <span class="nm-port-service">{{ port.service_name }}</span>
-                <span class="text-body-secondary">·</span>
-                <span class="nm-mono text-body-secondary">{{ port.port_number }}/{{ port.protocol }}</span>
-                {% else %}
-                <span class="nm-port-service nm-mono">{{ port.port_number }}/{{ port.protocol }}</span>
-                {% endif %}
-              </span>
-              {% if port.web_url %}
-              <a href="{{ port.web_url }}" target="_blank" rel="noopener"
-                 class="btn btn-sm btn-primary nm-open-btn">
-                Open
-              </a>
-              {% endif %}
-            </li>
-            {% endfor %}
-          </ul>
-          {% else %}
-          <span class="text-body-secondary small">—</span>
-          {% endif %}
-        </div>
-
+        {% if device.get('ports_preview', []) %}
         <div class="border-top pt-2 mt-2">
-          <div class="d-flex justify-content-between align-items-center mb-1">
-            <span class="small fw-semibold text-body-secondary">Interfaces</span>
-            <a href="{{ url_for('web.devices.device_details', device_id=device.id) }}#interfaces"
-               class="small">Show all ({{ device.interfaces_count }})</a>
+          {% for port in device.ports_preview %}
+          <div class="d-flex justify-content-between align-items-center py-1 {% if not loop.last %}border-bottom{% endif %}">
+            <span class="small">
+              <span class="fw-semibold">{{ port.service_name or port.port_number }}</span>
+              <span class="text-body-secondary"> · </span>
+              <span class="nm-mono text-body-secondary">{{ port.port_number }}/{{ port.protocol }}</span>
+            </span>
+            {% if port.web_url %}
+            <a href="{{ port.web_url }}" target="_blank" rel="noopener"
+               class="btn btn-sm btn-outline-primary">
+              Open
+            </a>
+            {% endif %}
           </div>
-          {% if device.interfaces_preview %}
-          <ul class="list-unstyled small mb-0 nm-interface-preview">
-            {% for iface in device.interfaces_preview %}
-            <li class="d-flex justify-content-between gap-2">
-              <span class="nm-mono">{{ iface.name }}</span>
-              <span class="text-body-secondary">
-                {% if iface.primary_ip %}{{ iface.primary_ip }}{% else %}{{ iface.interface_type or '—' }}{% endif %}
-              </span>
-            </li>
-            {% endfor %}
-          </ul>
-          {% else %}
-          <span class="text-body-secondary small">—</span>
-          {% endif %}
+          {% endfor %}
         </div>
-      </div>
-      <div class="card-footer d-flex justify-content-between align-items-center py-2">
-        <span class="text-body-secondary small">{{ device.network_name }}</span>
-        <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
-            <i class="bi bi-three-dots"></i>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <a class="dropdown-item" href="{{ url_for('web.devices.device_details', device_id=device.id) }}">
-                <i class="bi bi-eye"></i> Details
-              </a>
-            </li>
-            <li>
-              <button class="dropdown-item"
-                      hx-get="{{ url_for('web.devices.edit_device_form', device_id=device.id) }}"
-                      hx-target="#nm-modal-content">
-                <i class="bi bi-pencil"></i> Edit
-              </button>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <button class="dropdown-item text-danger"
-                      hx-delete="{{ url_for('web.devices.delete_device', device_id=device.id) }}"
-                      hx-target="#devices-table-wrapper"
-                      data-nm-confirm="Удалить устройство «{{ device.display }}»? Связанные connections тоже будут удалены.">
-                <i class="bi bi-trash"></i> Delete
-              </button>
-            </li>
-          </ul>
+        {% endif %}
+
+        <div class="card-footer d-flex justify-content-between align-items-center py-2">
+          <span class="text-body-secondary small">{{ device.network_name }}</span>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('web.devices.device_details', device_id=device.id) }}">
+                  <i class="bi bi-eye"></i> Details
+                </a>
+              </li>
+              <li>
+                <button class="dropdown-item"
+                        hx-get="{{ url_for('web.devices.edit_device_form', device_id=device.id) }}"
+                        hx-target="#nm-modal-content">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button class="dropdown-item text-danger"
+                        hx-delete="{{ url_for('web.devices.delete_device', device_id=device.id) }}"
+                        hx-target="#devices-table-wrapper"
+                        data-nm-confirm="Удалить устройство «{{ device.display }}»? Связанные connections тоже будут удалены.">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

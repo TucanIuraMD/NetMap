@@ -29,9 +29,18 @@ DEVICE_TYPES = [
     "pc",
     "laptop",
     "phone",
+    "lxc",
+    "vm",
+    "zigbee",
     "unknown",
     "other",
 ]
+
+DEVICE_TYPE_LABELS = {
+    "lxc": "LXC",
+    "vm": "VM",
+    "zigbee": "ZigBee",
+}
 
 INTERFACE_TYPES = [
     "ethernet",
@@ -205,6 +214,7 @@ def _filtered_devices() -> tuple[list[dict], dict]:
         "sort": sort,
         "networks": networks,
         "device_types": device_type_options(all_devices),
+        "device_type_labels": DEVICE_TYPE_LABELS,
         "pagination": pagination,
     }
 
@@ -235,6 +245,7 @@ def new_device_form():
         device=None,
         networks=networks,
         device_types=DEVICE_TYPES,
+        device_type_labels=DEVICE_TYPE_LABELS,
         error=None,
     )
 
@@ -258,6 +269,7 @@ def edit_device_form(device_id: int):
         device=device,
         networks=networks,
         device_types=DEVICE_TYPES,
+        device_type_labels=DEVICE_TYPE_LABELS,
         error=None,
     )
 
@@ -289,6 +301,7 @@ def create_device():
             device=payload,
             networks=networks,
             device_types=DEVICE_TYPES,
+        device_type_labels=DEVICE_TYPE_LABELS,
             error=exc.message,
         ), exc.status_code
 
@@ -314,6 +327,7 @@ def update_device(device_id: int):
             device=payload,
             networks=networks,
             device_types=DEVICE_TYPES,
+        device_type_labels=DEVICE_TYPE_LABELS,
             error=exc.message,
         ), exc.status_code
 
