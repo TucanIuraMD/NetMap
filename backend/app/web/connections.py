@@ -8,10 +8,9 @@ from .helpers import (
     index_by_id,
     interface_display_label,
 )
+from app.api.v1.validation import CONNECTION_TYPES
 
 connections_bp = Blueprint("connections", __name__, url_prefix="/connections")
-
-CONNECTION_TYPES = ["network", "ethernet", "fiber", "wifi", "virtual", "other"]
 
 
 def _connections_with_names() -> list[dict]:

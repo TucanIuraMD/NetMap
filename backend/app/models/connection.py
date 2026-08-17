@@ -1,10 +1,24 @@
 from datetime import datetime
 
+from sqlalchemy import UniqueConstraint
+
 from ..extensions import db
 
 
 class Connection(db.Model):
     __tablename__ = "connections"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "source_device_id",
+            "target_device_id",
+            "source_port_id",
+            "target_port_id",
+            "source_interface_id",
+            "target_interface_id",
+            name="uq_connections_device_ports",
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
 

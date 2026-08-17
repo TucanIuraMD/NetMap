@@ -24,6 +24,15 @@ INTERFACE_TYPES = {
 PORT_PROTOCOLS = {"tcp", "udp"}
 PORT_STATUSES = {"open", "closed", "filtered", "unknown"}
 
+CONNECTION_TYPES = [
+    "network",
+    "ethernet",
+    "fiber",
+    "wifi",
+    "virtual",
+    "other",
+]
+
 _MAC_RE = re.compile(r"^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$")
 
 
@@ -122,6 +131,19 @@ def validate_port_status(value: str | None) -> tuple[str | None, str | None]:
     if value not in PORT_STATUSES:
         return value, (
             "status must be one of: " + ", ".join(sorted(PORT_STATUSES))
+        )
+
+    return value, None
+
+
+def validate_connection_type(value: str | None) -> tuple[str | None, str | None]:
+    if value is None:
+        return None, "connection_type is required"
+
+    if value not in CONNECTION_TYPES:
+        return value, (
+            "connection_type must be one of: "
+            + ", ".join(CONNECTION_TYPES)
         )
 
     return value, None
