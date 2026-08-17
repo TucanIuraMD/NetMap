@@ -16,6 +16,7 @@ from .api.v1 import api_v1
 from .web import web_bp
 from .web.api_client import ApiError
 from .scheduler import init_scheduler, should_start_scheduler
+from .services.discovery_job_manager import DiscoveryJobManager
 
 
 def create_app() -> Flask:
@@ -27,6 +28,8 @@ def create_app() -> Flask:
 
     if should_start_scheduler(app):
         init_scheduler(app)
+
+    app.extensions["discovery_job_manager"] = DiscoveryJobManager(app)
 
     app.register_blueprint(api_v1, url_prefix="/api/v1")
     app.register_blueprint(web_bp)

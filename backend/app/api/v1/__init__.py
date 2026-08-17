@@ -12,6 +12,7 @@ from .services import services_bp
 from .connections import connections_bp
 from .topology import topology_bp
 from .discovery import discovery_bp
+from .discovery_jobs import discovery_jobs_bp
 from .imports import imports_bp
 
 api_v1.register_blueprint(sites_bp)
@@ -24,4 +25,5 @@ api_v1.register_blueprint(services_bp)
 api_v1.register_blueprint(connections_bp)
 api_v1.register_blueprint(topology_bp)
 api_v1.register_blueprint(discovery_bp)
+api_v1.register_blueprint(discovery_jobs_bp)
 api_v1.register_blueprint(imports_bp)
