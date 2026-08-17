@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import ipaddress
 import socket
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from typing import Any, Callable
 
 
 @dataclass
@@ -55,18 +56,40 @@ class NetworkScanner:
             open_ports=open_ports,
         )
 
-    def scan_network(self, cidr: str) -> list[DiscoveredHost]:
+    def scan_network(
+        self,
+        cidr: str,
+        on_progress: Callable[[int, DiscoveredHost | None], None] | None = None,
+    ) -> list[DiscoveredHost]:
+        """Scan a network, optionally reporting progress.
+
+        ``on_progress`` is called after each host is probed with the
+        current scanned count and the newly discovered host (or ``None``
+        when the host was not discovered).
+        """
         network = ipaddress.ip_network(cidr, strict=False)
         addresses = [str(address) for address in network.hosts()]
 
-        with ThreadPoolExecutor(max_workers=self.workers) as executor:
-            results = executor.map(self.scan_host, addresses)
+        found: list[DiscoveredHost] = []
+        scanned = 0
 
-        return [
-            result
-            for result in results
-            if result is not None
-        ]
+        with ThreadPoolExecutor(max_workers=self.workers) as executor:
+            futures = {
+                executor.submit(self.scan_host, address): address
+                for address in addresses
+            }
+
+            for future in as_completed(futures):
+                scanned += 1
+                host: DiscoveredHost | None = future.result()
+
+                if host is not None:
+                    found.append(host)
+
+                if on_progress is not None:
+                    on_progress(scanned, host)
+
+        return found
 
     def _is_port_open(self, ip_address: str, port: int) -> bool:
         try:

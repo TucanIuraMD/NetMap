@@ -64,6 +64,31 @@ def discovery_status():
     return jsonify(job.to_dict())
 
 
+@discovery_jobs_bp.get("/results")
+def discovery_results():
+    network_id = request.args.get("network_id", type=int)
+
+    if network_id is None:
+        return jsonify({"error": "network_id query parameter is required"}), 400
+
+    job = _manager().status(network_id)
+
+    if job is None:
+        return jsonify({"error": "No discovery job found for this network"}), 404
+
+    return jsonify(
+        {
+            "network_id": job.network_id,
+            "status": job.status,
+            "total_hosts": job.total_hosts,
+            "scanned_hosts": job.scanned_hosts,
+            "discovered": len(job.discovered_hosts),
+            "progress": job.progress,
+            "results": job.discovered_hosts,
+        }
+    )
+
+
 @discovery_jobs_bp.post("/cancel")
 def cancel_discovery():
     data = request.get_json(silent=True) or {}

@@ -4,7 +4,7 @@ import ipaddress
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from flask import Flask
 
@@ -42,8 +42,19 @@ class DiscoveryJob:
     hosts_found: int | None = None
     devices_synced: int | None = None
     devices: list[dict[str, Any]] = field(default_factory=list)
+    discovered_hosts: list[dict[str, Any]] = field(default_factory=list)
     _cancelled: bool = field(default=False, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    @property
+    def progress(self) -> int:
+        """Completion percentage, monotonic within ``0..100``."""
+        total = self.total_hosts or 0
+
+        if total <= 0:
+            return 0
+
+        return min(100, round(self.scanned_hosts / total * 100))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -57,6 +68,8 @@ class DiscoveryJob:
             "scanned_hosts": self.scanned_hosts,
             "hosts_found": self.hosts_found,
             "devices_synced": self.devices_synced,
+            "discovered": len(self.discovered_hosts),
+            "progress": self.progress,
             "devices": self.devices,
         }
 
@@ -185,14 +198,18 @@ class DiscoveryJobManager:
     ) -> list[DiscoveredHost] | None:
         """Run the scan while polling the cancel flag.
 
-        Returns ``None`` when the job was cancelled while scanning.
+        Reports live progress via the scanner callback and returns
+        ``None`` when the job was cancelled while scanning.
         """
         result: dict[str, list[DiscoveredHost]] = {"hosts": []}
         error: dict[str, str | None] = {"message": None}
 
         def run() -> None:
             try:
-                result["hosts"] = scanner.scan_network(cidr)
+                result["hosts"] = scanner.scan_network(
+                    cidr,
+                    on_progress=self._on_progress(job),
+                )
             except Exception as exc:  # noqa: BLE001 — surfaced through `error`
                 error["message"] = str(exc)
 
@@ -209,6 +226,28 @@ class DiscoveryJobManager:
 
         return result["hosts"]
 
+    @staticmethod
+    def _on_progress(job: DiscoveryJob) -> Callable[[int, DiscoveredHost | None], None]:
+        def on_progress(scanned: int, host: DiscoveredHost | None) -> None:
+            with job._lock:
+                if job._cancelled:
+                    return
+                job.scanned_hosts = max(job.scanned_hosts, scanned)
+                if host is not None:
+                    job.discovered_hosts.append(DiscoveryJobManager._host_to_result(host))
+
+        return on_progress
+
+    @staticmethod
+    def _host_to_result(host: DiscoveredHost) -> dict[str, Any]:
+        return {
+            "ip_address": host.ip_address,
+            "hostname": host.hostname,
+            "open_ports": host.open_ports,
+            "reachable": bool(host.open_ports),
+            "device_id": None,
+        }
+
     def _finish(
         self,
         job: DiscoveryJob,
@@ -223,6 +262,13 @@ class DiscoveryJobManager:
             job.scanned_hosts = job.total_hosts or 0
             job.hosts_found = len(hosts)
             job.devices_synced = len(devices)
+            job.discovered_hosts = [
+                {
+                    **self._host_to_result(host),
+                    "device_id": device.id,
+                }
+                for host, device in zip(hosts, devices)
+            ]
             job.devices = [
                 {
                     "id": device.id,
