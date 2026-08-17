@@ -10,6 +10,7 @@ from .ip_addresses import ip_addresses_bp
 from .ports import ports_bp
 from .services import services_bp
 from .connections import connections_bp
+from .topology import topology_bp
 from .discovery import discovery_bp
 from .imports import imports_bp
 
@@ -21,5 +22,6 @@ api_v1.register_blueprint(ip_addresses_bp)
 api_v1.register_blueprint(ports_bp)
 api_v1.register_blueprint(services_bp)
 api_v1.register_blueprint(connections_bp)
+api_v1.register_blueprint(topology_bp)
 api_v1.register_blueprint(discovery_bp)
 api_v1.register_blueprint(imports_bp)
