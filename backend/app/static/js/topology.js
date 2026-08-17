@@ -9,22 +9,39 @@
   const linkEl = document.getElementById("topology-node-link");
 
   const GENERIC_IFACE_NAMES = ["discovered", "unknown", "iface", "interface", "eth"];
+  const LINK_COLOR = "#58a6ff";
+  const WIFI_COLOR = "#d29922";
 
   let cy = null;
-  let allDevices = [];
+  let allNodes = [];
   let unlinkedNodes = [];
   let showUnlinked = false;
-
-  function nodeLabel(device) {
-    return device.display_name || device.name;
-  }
 
   function statusColor(isActive) {
     return isActive ? "#3fb950" : "#8b949e";
   }
 
-  function ifaceLabel(iface) {
-    if (!iface) return null;
+  function deviceLabel(node) {
+    const device = node.data.device || {};
+    return device.display_name || device.hostname || device.name || "device " + device.id;
+  }
+
+  function primaryIp(node) {
+    const interfaces = node.data.interfaces || [];
+    for (const iface of interfaces) {
+      for (const ip of iface.ip_addresses || []) {
+        if (ip.is_primary) {
+          return ip.address;
+        }
+      }
+    }
+    return null;
+  }
+
+  function interfaceLabel(iface) {
+    if (!iface) {
+      return null;
+    }
     const name = (iface.name || "").trim();
     if (name && GENERIC_IFACE_NAMES.indexOf(name.toLowerCase()) === -1) {
       return name;
@@ -32,124 +49,178 @@
     return "iface " + iface.id;
   }
 
+  function portLabel(port) {
+    if (!port) {
+      return null;
+    }
+    let label = port.port_number + "/" + port.protocol;
+    if (port.display_name) {
+      label += " (" + port.display_name + ")";
+    }
+    return label;
+  }
+
+  // Interface + port (when present) for one end of a connection.
+  function endpointLabel(node, interfaceId, portId) {
+    const parts = [];
+    if (interfaceId != null) {
+      const iface = (node.data.interfaces || []).find(function (i) {
+        return i.id === interfaceId;
+      });
+      const il = interfaceLabel(iface);
+      if (il) {
+        parts.push(il);
+      }
+    }
+    if (portId != null) {
+      const port = (node.data.ports || []).find(function (p) {
+        return p.id === portId;
+      });
+      const pl = portLabel(port);
+      if (pl) {
+        parts.push(pl);
+      }
+    }
+    return parts.length ? parts.join(" · ") : null;
+  }
+
+  function edgeLabel(edge, nodesById) {
+    const conn = edge.data.connection || {};
+    const sourceNode = nodesById.get(edge.data.source);
+    const targetNode = nodesById.get(edge.data.target);
+    const src = sourceNode
+      ? endpointLabel(sourceNode, conn.source_interface_id, conn.source_port_id)
+      : null;
+    const tgt = targetNode
+      ? endpointLabel(targetNode, conn.target_interface_id, conn.target_port_id)
+      : null;
+
+    if (src && tgt) {
+      return src + " → " + tgt;
+    }
+    if (src) {
+      return src + " →";
+    }
+    if (tgt) {
+      return "→ " + tgt;
+    }
+    return null;
+  }
+
+  function filterParams() {
+    const params = [];
+    const network = document.getElementById("topology-network").value;
+    const type = document.getElementById("topology-type").value;
+    const status = document.getElementById("topology-status").value;
+    if (network) {
+      params.push("network_id=" + encodeURIComponent(network));
+    }
+    if (type) {
+      params.push("device_type=" + encodeURIComponent(type));
+    }
+    if (status) {
+      params.push("status=" + encodeURIComponent(status));
+    }
+    return params.join("&");
+  }
+
+  function showEmptyState() {
+    if (cy) {
+      cy.destroy();
+      cy = null;
+    }
+    canvasEl.classList.add("d-none");
+    statusEl.textContent = showUnlinked
+      ? "Устройства не найдены."
+      : "Нет устройств, связанных соединениями. Добавьте соединения, чтобы увидеть топологию.";
+    toggleBtn.textContent = "Show without links";
+    panelEl.classList.add("d-none");
+  }
+
   async function loadGraph() {
     statusEl.textContent = "Loading topology…";
     panelEl.classList.add("d-none");
 
-    let devices, connections, interfaces;
-
+    let payload;
     try {
-      const [devicesRes, connectionsRes, interfacesRes] = await Promise.all([
-        fetch(window.NM_DEVICES_URL),
-        fetch(window.NM_CONNECTIONS_URL),
-        fetch(window.NM_INTERFACES_URL || "/api/v1/interfaces"),
-      ]);
-      devices = await devicesRes.json();
-      connections = await connectionsRes.json();
-      interfaces = await interfacesRes.json();
+      const qs = filterParams();
+      const url = window.NM_TOPOLOGY_URL + (qs ? "?" + qs : "");
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status);
+      }
+      payload = await res.json();
     } catch (err) {
       statusEl.textContent = "Не удалось загрузить данные топологии.";
       return;
     }
 
-    allDevices = devices;
+    const apiNodes = payload.nodes || [];
+    const apiEdges = payload.edges || [];
 
-    const interfacesByDevice = {};
-    (interfaces || []).forEach(function (iface) {
-      (interfacesByDevice[iface.device_id] =
-        interfacesByDevice[iface.device_id] || []).push(iface);
+    if (!apiNodes.length) {
+      showEmptyState();
+      return;
+    }
+
+    if (cy) {
+      cy.destroy();
+      cy = null;
+    }
+    canvasEl.classList.remove("d-none");
+
+    allNodes = apiNodes;
+    unlinkedNodes = apiNodes.filter(function (n) {
+      return !n.data.linked;
     });
 
-    // Devices that participate in at least one connection are rendered in
-    // the main graph; everything else is placed in a distinct side cluster
-    // so it does not clutter the main view but stays accessible.
-    const linkedIds = new Set();
-    connections.forEach(function (c) {
-      linkedIds.add(c.source_device_id);
-      linkedIds.add(c.target_device_id);
-    });
-
-    const linked = devices.filter(function (d) {
-      return linkedIds.has(d.id);
-    });
-    const unlinked = devices.filter(function (d) {
-      return !linkedIds.has(d.id);
-    });
-
-    unlinkedNodes = unlinked.map(function (device) {
-      return {
-        data: {
-          id: "device-" + device.id,
-          deviceId: device.id,
-          label: nodeLabel(device),
-          isActive: device.is_active,
-          linked: false,
-        },
-      };
-    });
-
-    const nodes = linked.map(function (device) {
-      return {
-        data: {
-          id: "device-" + device.id,
-          deviceId: device.id,
-          label: nodeLabel(device),
-          isActive: device.is_active,
-          linked: true,
-        },
-      };
-    });
-
-    const edges = connections
-      .filter(function (c) {
-        return (
-          devices.some((d) => d.id === c.source_device_id) &&
-          devices.some((d) => d.id === c.target_device_id)
-        );
+    const nodesById = new Map(
+      apiNodes.map(function (n) {
+        return [n.data.id, n];
       })
-      .map(function (c) {
-        const sourceIface = ifaceLabel(
-          (interfacesByDevice[c.source_device_id] || []).find(
-            function (i) {
-              return i.id === c.source_interface_id;
-            }
-          )
-        );
-        const targetIface = ifaceLabel(
-          (interfacesByDevice[c.target_device_id] || []).find(
-            function (i) {
-              return i.id === c.target_interface_id;
-            }
-          )
-        );
+    );
 
-        let label = null;
-        if (sourceIface && targetIface) {
-          label = sourceIface + " → " + targetIface;
-        } else if (sourceIface) {
-          label = sourceIface + " →";
-        } else if (targetIface) {
-          label = "→ " + targetIface;
-        }
+    const nodes = apiNodes.map(function (node) {
+      const label = deviceLabel(node);
+      const ip = primaryIp(node);
+      return {
+        data: {
+          id: node.data.id,
+          deviceId: node.data.deviceId,
+          label: label,
+          subtitle: ip && ip !== label ? ip : null,
+          isActive: node.data.isActive,
+          linked: node.data.linked,
+        },
+      };
+    });
 
+    const edges = apiEdges
+      .filter(function (e) {
+        return nodesById.has(e.data.source) && nodesById.has(e.data.target);
+      })
+      .map(function (e) {
         return {
           data: {
-            id: "conn-" + c.id,
-            source: "device-" + c.source_device_id,
-            target: "device-" + c.target_device_id,
-            type: c.connection_type,
-            label: label,
+            id: e.data.id,
+            source: e.data.source,
+            target: e.data.target,
+            type: e.data.type,
+            label: edgeLabel(e, nodesById),
           },
         };
       });
 
-    if (cy) {
-      cy.destroy();
-    }
-
     const initialNodes = showUnlinked
-      ? nodes.concat(unlinkedNodes)
-      : nodes;
+      ? nodes
+      : nodes.filter(function (n) {
+          return n.data.linked;
+        });
+
+    if (!initialNodes.length) {
+      showEmptyState();
+      return;
+    }
 
     cy = cytoscape({
       container: canvasEl,
@@ -158,16 +229,19 @@
         {
           selector: "node",
           style: {
-            label: "data(label)",
+            label: function (ele) {
+              const sub = ele.data("subtitle");
+              return sub ? ele.data("label") + "\n" + sub : ele.data("label");
+            },
             "background-color": function (ele) {
               return statusColor(ele.data("isActive"));
             },
             color: "#e6edf3",
             "font-size": 11,
             "text-valign": "bottom",
-            "text-margin-y": 6,
+            "text-margin-y": 8,
             "text-wrap": "wrap",
-            "text-max-width": "120px",
+            "text-max-width": "130px",
             width: 28,
             height: 28,
             "border-width": 2,
@@ -179,7 +253,7 @@
           style: {
             width: 34,
             height: 34,
-            "border-color": "#58a6ff",
+            "border-color": LINK_COLOR,
           },
         },
         {
@@ -196,8 +270,15 @@
           selector: "edge",
           style: {
             width: 2,
-            "line-color": "#58a6ff",
+            "line-color": function (ele) {
+              return ele.data("type") === "wifi" ? WIFI_COLOR : LINK_COLOR;
+            },
             "curve-style": "bezier",
+            "target-arrow-shape": "triangle",
+            "target-arrow-color": function (ele) {
+              return ele.data("type") === "wifi" ? WIFI_COLOR : LINK_COLOR;
+            },
+            "arrow-scale": 0.9,
             "line-style": function (ele) {
               return ele.data("type") === "wifi" ? "dashed" : "solid";
             },
@@ -244,9 +325,6 @@
     });
 
     cy.on("layoutstop", function () {
-      // Keep the main graph in view by default; when unlinked devices are
-      // toggled on, keep them visible too (no repositioning needed — cose
-      // separates components with componentSpacing).
       if (showUnlinked) {
         cy.fit(undefined, 40);
       } else {
@@ -256,42 +334,65 @@
 
     cy.on("tap", "node", function (evt) {
       const data = evt.target.data();
-      const device = allDevices.find((d) => d.id === data.deviceId);
-      if (!device) return;
-
-      titleEl.textContent = nodeLabel(device);
-      metaEl.textContent =
-        (device.device_type || "unknown") +
-        " · " +
-        (device.is_active ? "Active" : "Inactive");
+      const node = allNodes.find(function (n) {
+        return n.data.deviceId === data.deviceId;
+      });
+      if (!node) {
+        return;
+      }
+      const device = node.data.device || {};
+      const bits = [];
+      if (device.device_type) {
+        bits.push(device.device_type);
+      }
+      const ip = primaryIp(node);
+      if (ip) {
+        bits.push(ip);
+      }
+      bits.push(device.is_active ? "Active" : "Inactive");
+      titleEl.textContent = deviceLabel(node);
+      metaEl.textContent = bits.join(" · ");
       linkEl.href = window.NM_DEVICE_DETAILS_BASE + "/" + device.id;
       panelEl.classList.remove("d-none");
     });
 
-    const linkedCount = linked.length;
-    const unlinkedCount = unlinked.length;
+    const linkedCount = apiNodes.length - unlinkedNodes.length;
     statusEl.textContent =
       linkedCount +
       " linked devices, " +
       edges.length +
       " connections" +
-      (unlinkedCount ? " · " + unlinkedCount + " without links" : "");
+      (unlinkedNodes.length
+        ? " · " + unlinkedNodes.length + " without links"
+        : "");
     toggleBtn.textContent = showUnlinked
       ? "Hide without links"
-      : "Show without links (" + unlinkedCount + ")";
+      : "Show without links (" + unlinkedNodes.length + ")";
   }
 
   document.getElementById("topology-fit").addEventListener("click", function () {
-    if (cy) cy.fit(undefined, 40);
+    if (cy) {
+      cy.fit(undefined, 40);
+    }
   });
 
   document.getElementById("topology-reload").addEventListener("click", loadGraph);
+  document.getElementById("topology-reset").addEventListener("click", function () {
+    document.getElementById("topology-network").value = "";
+    document.getElementById("topology-type").value = "";
+    document.getElementById("topology-status").value = "";
+    loadGraph();
+  });
 
-  const toggleBtn = document.getElementById("topology-toggle-unlinked");
+  var toggleBtn = document.getElementById("topology-toggle-unlinked");
   toggleBtn.addEventListener("click", function () {
     showUnlinked = !showUnlinked;
     toggleBtn.classList.toggle("active", showUnlinked);
     loadGraph();
+  });
+
+  ["topology-network", "topology-type", "topology-status"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", loadGraph);
   });
 
   loadGraph();
