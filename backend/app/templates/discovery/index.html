@@ -6,45 +6,108 @@
 
 {% block content %}
 <p class="text-body-secondary">
-  Discovery сканирует подсеть каждой сети и синхронизирует найденные хосты с инвентарём Devices.
-  Запрос выполняется синхронно — кнопка блокируется на время сканирования.
+  Discovery сканирует подсеть выбранной сети (ICMP + TCP fallback) и
+  синхронизирует найденные хосты с инвентарём Devices.
+  Прогресс обновляется автоматически.
 </p>
 
-{% if networks %}
-<div class="table-responsive">
-  <table class="table nm-table align-middle">
-    <thead>
-      <tr><th>Network</th><th>CIDR</th><th>Site</th><th>Status</th><th style="width: 40%;">Action / Result</th></tr>
-    </thead>
-    <tbody>
-      {% for network in networks %}
-      <tr>
-        <td>
-          <a href="{{ url_for('web.networks.network_details', network_id=network.id) }}">{{ network.name }}</a>
-        </td>
-        <td class="nm-mono">{{ network.cidr }}</td>
-        <td>{{ network.site_name }}</td>
-        <td>{{ macros.active_badge(network.is_active) }}</td>
-        <td>
-          <button type="button" class="btn btn-sm btn-outline-primary"
-                  {% if not network.is_active %}disabled title="Network is inactive"{% endif %}
-                  hx-post="{{ url_for('web.networks.discover_network', network_id=network.id) }}"
-                  hx-target="#discovery-result-{{ network.id }}"
-                  hx-indicator="#discover-spinner-{{ network.id }}">
-            <span id="discover-spinner-{{ network.id }}" class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
-            <i class="bi bi-search"></i> Discover
-          </button>
-          <div id="discovery-result-{{ network.id }}" class="mt-2"></div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label for="discovery-network" class="form-label small mb-1">Network</label>
+        <select id="discovery-network" class="form-select form-select-sm nm-filter" style="min-width: 240px;">
+          {% for network in networks %}
+          <option value="{{ network.id }}"
+                  {% if not network.is_active %}disabled{% endif %}>
+            {{ network.name }} — {{ network.cidr }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="button" class="btn btn-sm btn-primary" id="discovery-start">
+          <i class="bi bi-search"></i> Start Discovery
+        </button>
+      </div>
+      <div class="col-auto">
+        <button type="button" class="btn btn-sm btn-outline-danger" id="discovery-cancel" disabled>
+          <i class="bi bi-x-circle"></i> Cancel
+        </button>
+      </div>
+      <div class="col-auto">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="discovery-reload"
+                title="Refresh">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+    </div>
+    <div id="discovery-error" class="alert alert-danger py-2 mt-3 d-none"></div>
+  </div>
 </div>
-{% else %}
-<div class="nm-empty-state">
+
+<div id="discovery-idle" class="nm-empty-state">
   <i class="bi bi-search fs-1"></i>
-  <p class="mt-2 mb-0">Сначала создайте хотя бы одну сеть на странице Networks.</p>
+  <p class="mt-2 mb-0">
+    Discovery не запущен. Выберите сеть и нажмите Start Discovery.
+  </p>
 </div>
-{% endif %}
+
+<div id="discovery-running" class="d-none">
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <span id="discovery-status-badge" class="badge text-bg-primary">running</span>
+          <span id="discovery-phase" class="text-body-secondary ms-2 small"></span>
+        </div>
+        <div class="text-body-secondary small">
+          <span id="discovery-scanned">0</span> / <span id="discovery-total">0</span> scanned
+          · <span id="discovery-discovered">0</span> discovered
+        </div>
+      </div>
+      <div class="progress" style="height: 22px;">
+        <div id="discovery-progress" class="progress-bar progress-bar-striped progress-bar-animated"
+             role="progressbar" style="width: 0%;">0%</div>
+      </div>
+      <div id="discovery-job-error" class="alert alert-danger py-2 mt-2 d-none"></div>
+    </div>
+  </div>
+</div>
+
+<div id="discovery-results" class="d-none">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Found hosts</span>
+      <span id="discovery-results-count" class="badge text-bg-info"></span>
+    </div>
+    <div class="table-responsive">
+      <table class="table nm-table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>IP</th>
+            <th>Hostname</th>
+            <th>Reachable</th>
+            <th>Open ports</th>
+            <th>Device</th>
+          </tr>
+        </thead>
+        <tbody id="discovery-results-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.NM_DISCOVERY = {
+    startUrl: "{{ url_for('api_v1.discovery_jobs.start_discovery') }}",
+    statusUrl: "{{ url_for('api_v1.discovery_jobs.discovery_status') }}",
+    cancelUrl: "{{ url_for('api_v1.discovery_jobs.cancel_discovery') }}",
+    resultsUrl: "{{ url_for('api_v1.discovery_jobs.discovery_results') }}",
+  };
+  window.NM_DEVICES_BASE = "{{ url_for('web.devices.list_devices') }}";
+</script>
+<script src="{{ url_for('static', filename='js/discovery.js') }}"></script>
 {% endblock %}
