@@ -36,6 +36,22 @@ def count_hosts(cidr: str) -> int:
     return max(network.num_addresses - 2, 0)
 
 
+# Single source of truth for the TCP ports probed during network
+# discovery and reused as the fallback probe list by monitoring.
+FALLBACK_TCP_PORTS = [
+    22,
+    23,
+    53,
+    80,
+    81,
+    443,
+    445,
+    554,
+    8080,
+    8443,
+]
+
+
 @dataclass
 class DiscoveredHost:
     ip_address: str
@@ -53,18 +69,7 @@ class NetworkScanner:
     bounded thread pool, never creating a thread per host.
     """
 
-    DEFAULT_PORTS = [
-        22,
-        23,
-        53,
-        80,
-        81,
-        443,
-        445,
-        554,
-        8080,
-        8443,
-    ]
+    DEFAULT_PORTS = FALLBACK_TCP_PORTS
 
     def __init__(
         self,

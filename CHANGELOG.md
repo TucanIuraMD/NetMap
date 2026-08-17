@@ -9,9 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Documentation updates for Monitoring Engine (README, PROJECT_STATUS, CHANGELOG, docs/)
-- TODO.md with current project status and roadmap
+### Added - Iteration 5: Async Discovery
+- Discovery job manager: one background job per network, single active job per process
+- `POST /api/v1/discovery/start`, `GET /api/v1/discovery/status`, `GET /api/v1/discovery/results`, `POST /api/v1/discovery/cancel`
+- Live progress tracking (monotonic percentage, `scanned_hosts` counters)
+- ICMP probe (raw socket, `CAP_NET_RAW`) with automatic TCP fallback
+- Discovery range limits: `DISCOVERY_MAX_HOSTS` (default 1024), `InvalidCIDRError` / `NetworkTooLargeError`
+- Discovery UI with live progress polling, results and cancel
+- Real-world validation on 192.168.80.0/24: 254 scanned, 12 discovered, repeat run without duplicates, cancel works
 
 ### Added - Iteration 4: Connections and Topology
 - Connections API hardening: validation, duplicate protection, filters, pagination
@@ -24,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Connections UI: device filter, interface+port labels, IP display, Open in Topology
 - Topology visualization rebuilt on `GET /api/v1/topology` (Cytoscape.js, directed edges, labels, empty state)
 - Documentation: Iteration 4 added to PROJECT_STATUS, TODO, API spec
+
+### Changed
+- TCP fallback ports unified into a single source of truth (`FALLBACK_TCP_PORTS` in `network_scanner`, shared with monitoring)
+- Documentation: Iteration 5 sync for API spec, PROJECT_STATUS, TODO, CHANGELOG
 
 ---
 

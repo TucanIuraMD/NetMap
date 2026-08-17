@@ -162,6 +162,14 @@ OAuth
 
 /api/v1/networks/<id>/discover
 
+/api/v1/discovery/start (async)
+
+/api/v1/discovery/status
+
+/api/v1/discovery/results
+
+/api/v1/discovery/cancel
+
 /api/v1/imports/ports (port import)
 
 **Planned:**
@@ -173,10 +181,6 @@ OAuth
 /api/v1/monitoring/check
 
 /api/v1/monitoring/stats
-
-/api/v1/discovery/status
-
-/api/v1/discovery/results
 
 /api/v1/history
 
@@ -578,48 +582,179 @@ Response shape:
 
 # 18. Discovery
 
-**Current Implementation:**
+Discovery is an **asynchronous background job** (current implementation).
+Only one job may run at a time per process; job state is kept in memory
+and is not persisted between restarts.
 
-POST /api/v1/networks/{id}/discover
+**Job statuses:** `running`, `completed`, `cancelled`, `failed`
+**Phases:** `scanning`, `syncing`, `done`, `cancelled`
 
-Start network discovery (synchronous, blocking).
+**Common job response shape** (returned by `start`, `status` and `cancel`):
+
+```json
+{
+  "network_id": 1,
+  "status": "completed",
+  "phase": "done",
+  "started_at": "2026-08-17T10:00:00.000000",
+  "finished_at": "2026-08-17T10:00:25.123456",
+  "error": null,
+  "total_hosts": 254,
+  "scanned_hosts": 254,
+  "hosts_found": 12,
+  "devices_synced": 12,
+  "discovered": 12,
+  "progress": 100,
+  "devices": [
+    {
+      "id": 1,
+      "name": "docker.local",
+      "hostname": "docker.local",
+      "device_type": "unknown"
+    }
+  ]
+}
+```
+
+`progress` is a monotonic completion percentage in `0..100`.
+
+---
+
+POST /api/v1/discovery/start
+
+Start a background discovery job for a network.
 
 **Request:**
 ```json
-{}
+{
+  "network_id": 1
+}
 ```
+
+**Response (202 Accepted):** the job dict with `status: "running"`.
+
+**Errors:**
+
+- `400` — `network_id` is not an integer, the network is inactive, or the
+  network exceeds `DISCOVERY_MAX_HOSTS` (default 1024) hosts
+- `404` — network not found
+- `409` — another discovery job is already running (conflict)
+
+---
+
+GET /api/v1/discovery/status?network_id=<id>
+
+Return the current job state and progress.
+
+**Errors:**
+
+- `400` — `network_id` query parameter missing
+- `404` — no discovery job exists for this network
+
+---
+
+GET /api/v1/discovery/results?network_id=<id>
+
+Return the latest discovery results (job state plus the discovered hosts).
 
 **Response:**
 ```json
 {
-  "devices": [...],
-  "discovered": 5,
-  "updated": 3,
-  "inactive": 2
+  "network_id": 1,
+  "status": "completed",
+  "total_hosts": 254,
+  "scanned_hosts": 254,
+  "discovered": 12,
+  "progress": 100,
+  "results": [
+    {
+      "ip_address": "192.168.80.16",
+      "hostname": "docker.local",
+      "open_ports": [22, 80, 443],
+      "reachable": true,
+      "device_id": 1
+    }
+  ]
 }
 ```
 
+`device_id` is populated after the sync phase completes (`null` while scanning).
+
+**Errors:**
+
+- `400` — `network_id` query parameter missing
+- `404` — no discovery job exists for this network
+
+---
+
+POST /api/v1/discovery/cancel
+
+Request cancellation of a running job. Cancelling an already finished job
+is idempotent (the job is returned unchanged).
+
+**Request:**
+```json
+{
+  "network_id": 1
+}
+```
+
+**Response:** the job dict with `status: "cancelled"`.
+
+**Errors:**
+
+- `400` — `network_id` is not an integer
+- `404` — no discovery job exists for this network
+
+---
+
+POST /api/v1/networks/{id}/discover
+
+Legacy synchronous discovery (blocking request). Kept for backward
+compatibility; the async endpoints above are the current implementation.
+
+**Response:**
+```json
+{
+  "network_id": 1,
+  "cidr": "192.168.80.0/24",
+  "hosts_found": 12,
+  "devices_synced": 12,
+  "devices": [
+    {
+      "id": 1,
+      "name": "docker.local",
+      "hostname": "docker.local",
+      "device_type": "unknown"
+    }
+  ]
+}
+```
+
+**Errors:**
+
+- `400` — network is inactive, or the network exceeds `DISCOVERY_MAX_HOSTS` hosts
+- `404` — network not found
+
+---
+
 **Discovery Method:**
-- TCP port scanning (ports: 22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443)
+
+- ICMP echo probe (raw socket) as the primary reachability check when the
+  process has `CAP_NET_RAW`; automatic TCP fallback otherwise
+- TCP port probing (ports: 22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443 —
+  single source of truth shared with monitoring)
 - DNS hostname resolution
 - Open port detection
 - Device/Interface/IPAddress/Port creation and synchronization
 - Inactive device marking
 
-**Limitations:**
-- Synchronous execution (blocks HTTP request until completion)
-- No progress indication
-- May timeout on large networks
+**Configuration:**
 
-**Planned:**
-
-POST /api/v1/discovery/start — Start async discovery (background task)
-
-POST /api/v1/discovery/stop — Stop running discovery
-
-GET /api/v1/discovery/status — Check discovery status and progress
-
-GET /api/v1/discovery/results — Get latest discovery results
+- `DISCOVERY_MAX_HOSTS` — maximum hosts per scan (default: 1024)
+- `DISCOVERY_TCP_TIMEOUT` — TCP probe timeout (default: 0.5)
+- `DISCOVERY_ICMP_TIMEOUT` — ICMP probe timeout (default: 1.0)
+- `DISCOVERY_WORKERS` — probe workers (default: 50)
 
 ---
 

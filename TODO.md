@@ -64,24 +64,29 @@
 - [x] Connections UI (device filter, interface+port labels, Open in Topology)
 - [x] Topology visualization rebuilt on the topology API (Cytoscape.js)
 
+### Iteration 5 — Async Discovery
+- [x] Background discovery tasks (non-blocking)
+- [x] Discovery start/status/cancel endpoints
+- [x] Discovery progress tracking (monotonic percentage)
+- [x] Discovery results API (`GET /api/v1/discovery/results`)
+- [x] ICMP probe (raw socket) with automatic TCP fallback
+- [x] Discovery range limits (`DISCOVERY_MAX_HOSTS`, default 1024)
+- [x] UI polling for discovery progress
+- [x] Real-world validation on 192.168.80.0/24 (254 scanned, 12 discovered, repeat run without duplicates, cancel works)
+
 ---
 
 ## 🔄 In Progress
 
-- None. Iteration 4 is complete; the next iteration is **Async Discovery** (see Current Focus).
+- None. Iteration 5 is complete; the next iteration is **Monitoring History** (see Current Focus).
 
 ---
 
 ## 📋 High Priority (Next Iteration)
 
-### Async Discovery
-- [ ] Background discovery tasks (non-blocking)
-- [ ] Discovery status API (`GET /api/v1/discovery/status`)
-- [ ] Discovery progress tracking
-- [ ] Discovery results API (`GET /api/v1/discovery/results`)
-- [ ] Discovery start/stop/cancel endpoints
-- [ ] UI polling for discovery progress
-- [ ] Discovery history
+### Discovery History
+- [ ] Persist discovery job runs (history table + API)
+- [ ] Re-run discovery from history
 
 ### Monitoring Enhancements
 - [ ] Monitoring history table (store check results over time)
@@ -239,9 +244,10 @@
 ## 🐛 Known Issues
 
 ### Discovery
-- Discovery is synchronous and blocks the request until completion
-- Large subnets (/16 or larger) may cause timeout issues
-- No progress indication during discovery
+- Job state is in-memory only (lost on restart)
+- Raw ICMP requires `CAP_NET_RAW`; the scanner falls back to TCP probing otherwise
+- No persistent discovery history yet
+- Subnets larger than `DISCOVERY_MAX_HOSTS` (default 1024) are rejected by design
 
 ### UI
 - Dashboard stats fetch multiple API endpoints instead of aggregate
@@ -262,14 +268,14 @@
 
 ## 🎯 Current Focus
 
-**Iteration 4 (Connections and Topology):** Complete — Connections API hardening, Topology API, Connections UI, Topology visualization.
+**Iteration 5 (Async Discovery):** Complete — background jobs, progress/results/cancel API, ICMP probe with TCP fallback, range limits, UI progress polling.
 
-**Next Iteration Target:** Async Discovery + Monitoring History
+**Next Iteration Target:** Monitoring History
 
 **Key Goals:**
-1. Non-blocking discovery with progress API
-2. Store monitoring check results over time
-3. Device availability timeline
+1. Store monitoring check results over time
+2. Device availability timeline
+3. Persist discovery job history
 4. Alert system foundation
 
 **Timeline:** 2-3 weeks
@@ -278,7 +284,7 @@
 
 ## 📝 Notes
 
-- **Iteration 4** (Connections and Topology) is complete: commits `ca5bcb4`, `1230db3`, `985c8f4`, `fcd98d3`.
+- **Iteration 5** (Async Discovery) is complete: commits `cdc043c`, `5b36932`, `858747d`, `d4a3588`.
 - **Port Import API** is implemented and committed (`358aa40`).
 - **Monitoring Engine** is fully functional and running in production.
 - **Device Types** (LXC, VM, ZigBee) are implemented and committed.

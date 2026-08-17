@@ -9,7 +9,7 @@
 
 ## Current State
 
-NetMap has completed **Iteration 1 (Foundation)**, **Iteration 2 (Interfaces/IP/Ports/Connections)**, **Iteration 3 (Monitoring Engine)**, and **Iteration 4 (Connections and Topology)**, and is now a functional network infrastructure inventory, discovery, and monitoring platform with a polished Web UI, automatic availability checks, hardened connections management, and a rebuilt topology visualization driven by a dedicated topology API.
+NetMap has completed **Iteration 1 (Foundation)**, **Iteration 2 (Interfaces/IP/Ports/Connections)**, **Iteration 3 (Monitoring Engine)**, **Iteration 4 (Connections and Topology)**, and **Iteration 5 (Async Discovery)**, and is now a functional network infrastructure inventory, discovery, and monitoring platform with a polished Web UI, automatic availability checks, hardened connections management, a rebuilt topology visualization driven by a dedicated topology API, and non-blocking background discovery with live progress, results and cancel support.
 
 ---
 
@@ -169,6 +169,48 @@ Bulk port import feature:
 
 ---
 
+### ✅ Iteration 5 — Async Discovery
+
+**Status:** Complete
+**Completed:** 2026-08-17
+**Commits:**
+- `cdc043c` feat: add discovery job manager
+- `5b36932` feat: add discovery progress and results API
+- `858747d` feat: add ICMP probe and discovery range limits
+- `d4a3588` feat: add discovery UI with progress polling
+
+**Discovery job manager (`cdc043c`):**
+- `DiscoveryJobManager` bound to the Flask app, one background job per network, single active job process-wide
+- Job state kept in memory (running/completed/cancelled/failed; phases scanning/syncing/done)
+- Thread-based background execution inside an application context, injectable scanner for tests
+- Endpoints: `POST /api/v1/discovery/start`, `GET /api/v1/discovery/status`, `POST /api/v1/discovery/cancel`
+- `409 Conflict` when a job is already running; validation for invalid/inactive/missing networks
+
+**Progress and results API (`5b36932`):**
+- Live progress via `on_progress` callback in `NetworkScanner`
+- Monotonic `progress` percentage (`0..100`) and `scanned_hosts` counters
+- `GET /api/v1/discovery/results` returning job state plus discovered hosts (`ip_address`, `hostname`, `open_ports`, `reachable`, `device_id`)
+
+**ICMP probe and range limits (`858747d`):**
+- `ICMPProbe` — raw-socket ICMP echo with `ICMPUnavailableError` when raw sockets are not permitted
+- ICMP-first reachability with automatic TCP fallback over a fixed port list
+- Range validation: `InvalidCIDRError` / `NetworkTooLargeError`, `DISCOVERY_MAX_HOSTS` limit (default 1024)
+- Config: `DISCOVERY_MAX_HOSTS`, `DISCOVERY_TCP_TIMEOUT`, `DISCOVERY_ICMP_TIMEOUT`, `DISCOVERY_WORKERS`
+
+**Discovery UI (`d4a3588`):**
+- `/discovery` page with start, live progress polling (1s), results table, and cancel
+- Polling stops on completion/cancellation/failure; job state restored on reload
+
+**Real-world validation (192.168.80.0/24, network "Work"):**
+- **254 hosts** scanned, **12 discovered**, all via TCP fallback (ICMP unavailable without `CAP_NET_RAW`), 242 unreachable, duration ~25s
+- **Repeated run:** identical 12 IPs, **no duplicates** (dedup by IP, reuses existing devices)
+- **Cancel:** job stopped at scanned=60 with results frozen
+- DB after tests: 42 devices, 42 IPs, 72 ports, 2 connections; no duplicates created
+
+**Known limitation:** raw ICMP requires `CAP_NET_RAW` (e.g. `setcap cap_net_raw+ep` or a systemd `AmbientCapabilities=` unit); without it the scanner silently falls back to TCP probing. On the dev sandbox this is expected behaviour.
+
+---
+
 ## Current Data State
 
 **Devices:** 42
@@ -289,6 +331,11 @@ PUT    /api/v1/networks/<id>
 DELETE /api/v1/networks/<id>
 POST   /api/v1/networks/<id>/discover
 
+POST   /api/v1/discovery/start
+GET    /api/v1/discovery/status
+GET    /api/v1/discovery/results
+POST   /api/v1/discovery/cancel
+
 GET    /api/v1/devices
 GET    /api/v1/devices/<id>
 POST   /api/v1/devices
@@ -389,23 +436,30 @@ POST   /api/v1/imports/ports
 
 ### Discovery Service
 
-**Endpoint:** `POST /api/v1/networks/<id>/discover`
+**Current implementation:** asynchronous background jobs.
+
+**Endpoints:**
+- `POST /api/v1/discovery/start` — start a background job
+- `GET /api/v1/discovery/status?network_id=<id>` — progress and state
+- `GET /api/v1/discovery/results?network_id=<id>` — job state plus discovered hosts
+- `POST /api/v1/discovery/cancel` — cancel a running job
+- `POST /api/v1/networks/<id>/discover` — legacy synchronous discovery (kept for compatibility)
 
 **Components:**
-- `NetworkScanner` — TCP port scanning
-- `DiscoveryService` — Database synchronization
+- `DiscoveryJobManager` — background job lifecycle (one active job per process)
+- `NetworkScanner` — ICMP-first parallel scanning with TCP fallback
+- `ICMPProbe` — raw-socket ICMP echo (falls back gracefully without `CAP_NET_RAW`)
+- `DiscoveryService` — database synchronization
 
 **Flow:**
-1. Scan network CIDR
-2. Detect hosts via TCP port probe
+1. Scan network CIDR (host limit: `DISCOVERY_MAX_HOSTS`, default 1024)
+2. Probe reachability: ICMP echo, falling back to TCP port probing
 3. Resolve hostnames
 4. Identify open ports
 5. Sync to database (create/update devices)
 6. Mark missing devices as inactive
 
-**Port detection:** 22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443
-
-**Current state:** Synchronous (blocking request)
+**Port detection:** 22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443 (single source of truth shared with monitoring)
 
 ---
 
@@ -468,12 +522,12 @@ NetMap recognizes standard services and generates Web URLs:
 
 ## Known Limitations
 
-1. **Discovery** — Synchronous; no background tasks or progress API yet
+1. **Monitoring History** — No historical availability data stored yet
 2. **Sites CRUD** — No dedicated UI page
 3. **Dashboard stats** — Fetches multiple collections instead of aggregate API
 4. **Large datasets** — API filtering helps, but UI can be improved
-5. **Monitoring History** — No historical availability data stored yet
-6. **Alert System** — No notifications on device status changes
+5. **Alert System** — No notifications on device status changes
+6. **ICMP** — Raw ICMP requires `CAP_NET_RAW`; falls back to TCP probing without it
 
 ---
 
@@ -494,19 +548,22 @@ NetMap recognizes standard services and generates Web URLs:
 - [x] Iteration 4: Topology API + TopologyService (`GET /api/v1/topology`)
 - [x] Iteration 4: Connections UI (device filter, interface+port labels, Open in Topology)
 - [x] Iteration 4: Topology visualization on Cytoscape.js (directed edges, labels, filters, empty state)
+- [x] Iteration 5: Async discovery job manager (`POST /api/v1/discovery/start`, status, cancel)
+- [x] Iteration 5: Discovery progress and results API (`GET /api/v1/discovery/status`, `/results`)
+- [x] Iteration 5: ICMP probe with TCP fallback and discovery range limits (`DISCOVERY_MAX_HOSTS`)
+- [x] Iteration 5: Discovery UI with live progress polling
 
 ### 📋 Next Steps
 
-1. **Async Discovery** — Background tasks with status API and progress tracking
-2. **Monitoring History** — Store availability check results over time
-3. **Dashboard Stats API** — `/api/v1/stats` aggregate endpoint
-4. **Alert System** — Notifications on device status changes
-5. **Sites CRUD UI** — Dedicated page for Sites management
-6. **Service Detection** — Enhanced automatic service identification
-7. **Topology Enhancements** — Additional layouts, export (PNG/SVG/PDF), node grouping
-8. **Infrastructure Integrations** — MikroTik, Proxmox, Docker APIs
-9. **PostgreSQL Deployment** — Production database setup
-10. **Multi-user & RBAC** — Authentication and authorization
+1. **Monitoring History** — Store availability check results over time
+2. **Dashboard Stats API** — `/api/v1/stats` aggregate endpoint
+3. **Alert System** — Notifications on device status changes
+4. **Sites CRUD UI** — Dedicated page for Sites management
+5. **Service Detection** — Enhanced automatic service identification
+6. **Topology Enhancements** — Additional layouts, export (PNG/SVG/PDF), node grouping
+7. **Infrastructure Integrations** — MikroTik, Proxmox, Docker APIs
+8. **PostgreSQL Deployment** — Production database setup
+9. **Multi-user & RBAC** — Authentication and authorization
 
 ### 🔮 Future (v2.0+)
 
@@ -525,18 +582,18 @@ NetMap recognizes standard services and generates Web URLs:
 
 **Branch:** `main`
 
-**Last commits (Iteration 4):**
+**Last commits (Iteration 5):**
 ```
-fcd98d3 feat: rebuild topology visualization
-985c8f4 feat: improve connections UI
-1230db3 feat: add topology API and service
-ca5bcb4 feat: validate and harden connections API
+d4a3588 feat: add discovery UI with progress polling
+858747d feat: add ICMP probe and discovery range limits
+5b36932 feat: add discovery progress and results API
+cdc043c feat: add discovery job manager
 ```
 
 **Uncommitted changes:**
 - None in tracked files. `opencode.json` is untracked and intentionally not committed.
 
-**Note:** this status document is itself pending commit together with the Iteration 4 documentation update.
+**Note:** this status document is itself pending commit together with the Iteration 5 documentation update.
 
 ---
 

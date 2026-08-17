@@ -7,9 +7,7 @@ from app.extensions import db
 from app.models.device import Device
 from app.models.interface import Interface
 from app.models.ip_address import IPAddress
-
-# TCP ports probed when a device has no known open ports recorded.
-FALLBACK_TCP_PORTS = [22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443]
+from app.services.network_scanner import FALLBACK_TCP_PORTS
 
 
 class MonitoringService:
