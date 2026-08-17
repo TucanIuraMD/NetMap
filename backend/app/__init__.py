@@ -15,6 +15,7 @@ from .models.connection import Connection
 from .api.v1 import api_v1
 from .web import web_bp
 from .web.api_client import ApiError
+from .scheduler import init_scheduler, should_start_scheduler
 
 
 def create_app() -> Flask:
@@ -23,6 +24,9 @@ def create_app() -> Flask:
 
     db.init_app(app)
     migrate.init_app(app, db)
+
+    if should_start_scheduler(app):
+        init_scheduler(app)
 
     app.register_blueprint(api_v1, url_prefix="/api/v1")
     app.register_blueprint(web_bp)
