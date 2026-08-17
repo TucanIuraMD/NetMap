@@ -1,6 +1,7 @@
 # NetMap Database Design
-**Version:** 1.0
-**Status:** Approved
+**Version:** 1.1
+**Status:** Current Implementation
+**Last Updated:** 2026-08-17
 **Document:** 02_DATABASE.md
 
 ---
@@ -112,37 +113,30 @@ Contains multiple Devices.
 
 Represents any physical or logical infrastructure object.
 
-Supported types
+**Supported types (current implementation):**
 
-Router
+- router
+- switch
+- server
+- nas
+- camera
+- printer
+- ap (Access Point)
+- esp32
+- pc
+- laptop
+- phone
+- **lxc** (LXC Container)
+- **vm** (Virtual Machine)
+- **zigbee** (ZigBee Device)
+- unknown
+- other
 
-Switch
-
-Access Point
-
-Server
-
-Hypervisor
-
-Virtual Machine
-
-Container
-
-NAS
-
-Desktop
-
-Laptop
-
-Phone
-
-Camera
-
-IoT
-
-Printer
-
-Unknown
+**Display labels:**
+- lxc → "LXC"
+- vm → "VM"
+- zigbee → "ZigBee"
+- others → capitalize first letter
 
 Every Device belongs to one Network.
 
@@ -183,83 +177,123 @@ IPv6
 
 One Interface may have multiple IP addresses.
 
+**Additional Fields:**
+- is_primary (Boolean) — marks the primary IP address for the device (used by MonitoringService)
+
 ---
 
 ## Port
 
 Represents TCP or UDP port.
 
-Stores
+**Fields:**
 
-Port Number
+- port_number (Integer)
+- protocol (String: tcp/udp)
+- status (String: open/closed/filtered/unknown)
+- service_id (Foreign Key to Service, nullable)
+- web_scheme (String: http/https, nullable)
+- display_name (String, nullable)
+- description (Text)
+- device_id (Foreign Key to Device)
+- created_at, updated_at (DateTime)
 
-Protocol
-
-Status
-
-Description
+**Relationships:**
+- Belongs to Device (N:1)
+- Belongs to Service (N:1, optional)
 
 ---
 
 ## Service
 
-Examples
+**Current Implementation:**
 
-SSH
+A Service represents a named network service that can be associated with Ports.
 
-HTTP
+**Fields:**
+- name (String: SSH, HTTP, DNS, etc.)
+- description (Text)
+- created_at, updated_at (DateTime)
 
-HTTPS
+**Relationships:**
+- Has many Ports (1:N)
 
-MQTT
+**Standard Services (auto-detected):**
+- SSH (port 22)
+- DNS (port 53)
+- HTTP (port 80)
+- HTTPS (port 443)
+- Portainer (ports 3000, 8000, 9443)
+- Proxmox (port 8006)
+- Qdrant (ports 6333, 6334)
+- go2rtc (ports 1984, 8554)
+- Custom services (user-defined)
 
-FTP
+**Web Access:**
+Ports with `web_scheme` (http/https) enable "Open" buttons in UI for quick access.
 
-DNS
+---
 
-SMB
+## Connection
 
-NTP
+**Current Implementation:**
 
-Can be linked to multiple Ports.
+Represents a connection/link between two devices.
+
+**Fields:**
+- source_device_id (Foreign Key to Device)
+- target_device_id (Foreign Key to Device)
+- source_port_id (Foreign Key to Port, nullable)
+- target_port_id (Foreign Key to Port, nullable)
+- source_interface_id (Foreign Key to Interface, nullable)
+- target_interface_id (Foreign Key to Interface, nullable)
+- connection_type (String: network, physical, logical)
+- description (Text)
+- is_active (Boolean, default: true)
+- created_at, updated_at (DateTime)
+
+**Relationships:**
+- Belongs to source Device (N:1)
+- Belongs to target Device (N:1)
+- Optionally references source Port (N:1)
+- Optionally references target Port (N:1)
+- Optionally references source Interface (N:1)
+- Optionally references target Interface (N:1)
+
+**Notes:**
+- Cascading delete: removing a Device removes its Connections
+- Port and Interface references are optional (device-level, port-level, or interface-level connections)
 
 ---
 
 ## Monitoring
 
-Stores monitoring samples.
+**Status:** Not Implemented
 
-Fields
+**Planned Fields:**
 
-Timestamp
-
-Online
-
-Latency
-
-Packet Loss
-
-Response Time
+- device_id (Foreign Key to Device)
+- timestamp (DateTime)
+- is_online (Boolean)
+- latency (Float, milliseconds)
+- packet_loss (Float, percentage)
+- response_time (Float, milliseconds)
 
 ---
 
 ## History
 
-Stores all important events.
+**Status:** Not Implemented
 
-Examples
+**Planned Events:**
 
-Device created
-
-Device removed
-
-Status changed
-
-IP changed
-
-Port changed
-
-Service changed
+- Device created
+- Device removed
+- Status changed (active/inactive)
+- IP address changed
+- Port changed
+- Service changed
+- Connection added/removed
 
 ---
 

@@ -4,8 +4,9 @@
 
 > NetMap — веб-платформа для инвентаризации сетевой инфраструктуры, обнаружения устройств, управления сетями и устройствами, фиксации соединений и визуализации топологии.
 
-**Status:** Under Development
-**Iteration:** 1 — Foundation / UI
+**Status:** Active Development
+**Version:** 0.3.0-dev
+**Iteration:** 3 Complete — Monitoring Engine
 **License:** MIT
 
 ## 1. Назначение
@@ -15,13 +16,17 @@ NetMap предназначен для ведения актуальной ка�
 Основные задачи:
 
 - инвентаризация сетей и устройств;
-- обнаружение устройств в подсетях;
-- хранение интерфейсов, IP-адресов и портов;
+- обнаружение устройств в подсетях (TCP port scanning);
+- хранение интерфейсов, IP-адресов и сервисов/портов;
 - ручное редактирование имён и описаний;
 - фиксация соединений между устройствами;
-- отображение Web-сервисов;
+- автоматическое распознавание стандартных сервисов;
+- быстрый доступ к Web-сервисам (кнопки Open);
 - визуализация топологии;
-- подготовка основы для мониторинга и инфраструктурных интеграций.
+- API-side фильтрация, сортировка и пагинация;
+- периодический мониторинг доступности устройств (ICMP ping + TCP fallback);
+- массовый импорт портов из внешних источников;
+- подготовка основы для инфраструктурных интеграций.
 
 Архитектура рассчитана на несколько независимых площадок (Site) и дальнейшее масштабирование.
 
@@ -37,12 +42,14 @@ NetMap предназначен для ведения актуальной ка�
 
 `/devices`
 
-- список устройств;
-- поиск, фильтрация, сортировка и пагинация;
+- список устройств с карточками (3 колонки на desktop);
+- поиск, фильтрация, сортировка и пагинация (API-side);
 - Add / Edit / Delete;
-- Active / Inactive.
+- Active / Inactive;
+- полный список Services на каждой карточке;
+- кнопки Open для быстрого доступа к Web-сервисам.
 
-`/devices/<id>` — Details с Overview, Network, Interfaces/IP, Ports/Web Access и Connections.
+`/devices/<id>` — Details с Overview, Network, Interfaces/IP, Services/Web Access и Connections.
 
 ### Networks
 
@@ -58,7 +65,16 @@ NetMap предназначен для ведения актуальной ка�
 
 `/discovery` и `/networks/<id>` позволяют запускать обнаружение устройств в сети.
 
-Текущий Discovery синхронный: запрос выполняется до получения результата.
+**Метод:** TCP port scanning (порты 22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443)
+
+**Возможности:**
+- Автоматическое создание/обновление устройств
+- Резолвинг hostname
+- Обнаружение открытых портов
+- Создание интерфейсов и IP-адресов
+- Пометка отсутствующих устройств как Inactive
+
+**Статус:** Синхронный (запрос выполняется до получения результата).
 
 ### Connections
 
@@ -67,6 +83,37 @@ NetMap предназначен для ведения актуальной ка�
 ### Topology
 
 `/topology` — Cytoscape.js граф, где устройства являются nodes, а connections — edges. Клик по узлу открывает Device Details.
+
+### Monitoring
+
+**Статус:** Реализовано
+
+**Компоненты:**
+- `MonitoringService` — проверка доступности устройств
+- `APScheduler` — фоновый планировщик задач
+- Периодические проверки каждые 5 минут (настраивается через `MONITORING_INTERVAL_MINUTES`)
+
+**Метод:** ICMP ping с TCP fallback к известным открытым портам устройства
+
+**Возможности:**
+- Автоматическое обновление статуса `is_active` для устройств
+- Проверка устройств с известными IP-адресами
+- Fallback к стандартным портам при отсутствии записей об открытых портах
+- Может быть отключён через `MONITORING_ENABLED=false`
+
+### Port Import
+
+**Статус:** Реализовано (не закоммичено)
+
+**Endpoint:** `POST /api/v1/imports/ports`
+
+**Возможности:**
+- Массовый импорт портов из JSON
+- Разрешение устройств по ID, IP-адресу, имени или hostname
+- Автоматическое создание/обновление портов и сервисов
+- Предотвращение дублирования
+- Автоопределение `web_scheme` для известных портов
+- Маркировка импортированных портов (`description='import:auto'`)
 
 ## 3. Архитектура
 
@@ -115,6 +162,7 @@ Web UI не должен обращаться к БД напрямую. Осно
 | Development DB | SQLite |
 | Target DB | PostgreSQL |
 | Production server | Gunicorn |
+| Scheduler | APScheduler |
 
 Frontend-библиотеки размещены локально в `/backend/app/static/vendor/`.
 
@@ -136,14 +184,16 @@ Device ---- Connection ---- Device
 
 Основные модели проекта:
 
-- Site;
-- Network;
-- Device;
-- Interface;
-- IPAddress;
-- Port;
-- Service;
-- Connection.
+- **Site** — физическая площадка (Home, Office);
+- **Network** — подсеть (192.168.x.x/24);
+- **Device** — любое сетевое устройство;
+- **Interface** — сетевой интерфейс (eth0, ens18, discovered);
+- **IPAddress** — IPv4/IPv6 адрес;
+- **Port** — TCP/UDP порт с опциональной привязкой к Service;
+- **Service** — именованный сервис (SSH, HTTP, DNS и т.д.);
+- **Connection** — связь между двумя устройствами.
+
+**Device Types:** router, switch, server, nas, camera, printer, ap, esp32, pc, laptop, phone, **lxc**, **vm**, **zigbee**, unknown, other.
 
 ## 6. Первоначальные сети
 
@@ -169,17 +219,30 @@ Device ---- Connection ---- Device
 
 ## 7. Discovery
 
-Текущие компоненты Discovery/сканирования включают ICMP, ARP, Nmap, DNS, mDNS и MAC Vendor.
+**Текущая реализация:** TCP port scanning через `NetworkScanner` и синхронизация через `DiscoveryService`.
 
-Основной endpoint:
-
+**Endpoint:**
 ```http
 POST /api/v1/networks/<network_id>/discover
 ```
 
-Discovery должен собирать информацию, а не напрямую изменять БД. Обработка результатов выполняется сервисным слоем.
+**Порты сканирования:** 22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443
 
-Планируемые интеграции: SNMP, LLDP, CDP, MikroTik, Proxmox, Docker, Home Assistant, VMware, Kubernetes, UniFi.
+**Функции:**
+- Обнаружение хостов в подсети
+- Резолвинг hostname (DNS reverse lookup)
+- Определение открытых портов
+- Создание/обновление Device записей
+- Создание Interface и IPAddress
+- Пометка отсутствующих устройств как Inactive
+- Синхронизация портов
+
+**Архитектура:**
+- `NetworkScanner` — TCP-сканирование (не пишет в БД)
+- `DiscoveryService` — синхронизация результатов с БД
+- Результаты Discovery обрабатываются сервисным слоем
+
+**Планируемые интеграции:** SNMP, LLDP, CDP, MikroTik, Proxmox, Docker, Home Assistant, VMware, Kubernetes, UniFi.
 
 ## 8. REST API
 
@@ -200,10 +263,22 @@ Base path:
 /api/v1/ports
 /api/v1/services
 /api/v1/connections
-/api/v1/discovery
+/api/v1/imports
 ```
 
 CRUD-ресурсы используют GET/POST/PUT/DELETE.
+
+**Devices endpoint поддерживает:**
+- `?search=<term>` — поиск по name/hostname/IP
+- `?network_id=<id>` — фильтр по сети
+- `?device_type=<type>` — фильтр по типу устройства
+- `?is_active=<true|false>` — фильтр по статусу
+- `?sort=<field>` — сортировка (name, hostname, device_type, is_active, created_at, updated_at)
+- `?page=<n>` — номер страницы
+- `?per_page=<n>` — количество на странице (default: 50)
+
+**Imports endpoint:**
+- `POST /api/v1/imports/ports` — массовый импорт портов (реализовано, не закоммичено)
 
 Подробная документация: `/docs/03_API.md`.
 
@@ -263,11 +338,13 @@ http://192.168.80.16:5001
 /backend/config.py
 ```
 
-Поддерживаемые переменные окружения включают:
+Поддерживаемые переменные окружения:
 
 ```text
-SECRET_KEY
-DATABASE_URL
+SECRET_KEY                      — секретный ключ Flask (default: "netmap-dev")
+DATABASE_URL                    — URL базы данных (default: "sqlite:///netmap.db")
+MONITORING_ENABLED              — включить мониторинг (default: true)
+MONITORING_INTERVAL_MINUTES     — интервал проверки устройств в минутах (default: 5)
 ```
 
 По умолчанию используется SQLite:
@@ -388,13 +465,7 @@ python -m compileall -q backend/app
 
 ## 16. Известные ограничения
 
-### Discovery
 
-Discovery синхронный и может занимать заметное время на больших подсетях. Следующий этап — фоновые задачи и статус/polling.
-
-### Devices filtering
-
-Фильтрация, сортировка и пагинация сейчас выполняются на UI-слое после получения полного списка. Для большого инвентаря операции следует перенести в API/БД.
 
 ### Sites
 
@@ -404,40 +475,83 @@ Discovery синхронный и может занимать заметное �
 
 Dashboard получает несколько коллекций API вместо отдельного aggregate `/api/v1/stats`.
 
-### Monitoring
+### Async Discovery
 
-Полноценный online/offline monitoring пока не реализован. `Active / Inactive` — это состояние записи, а не результат мониторинга доступности.
+Discovery синхронный и может занимать заметное время на больших подсетях. Следующий этап — фоновые задачи с API статуса и polling.
 
 ## 17. Roadmap
 
-### Iteration 1 — Foundation / UI
+### ✅ Iteration 1 — Foundation (Complete)
 
 - [x] Flask application
-- [x] SQLAlchemy
-- [x] SQLite
-- [x] migrations
-- [x] REST API
-- [x] Dashboard
-- [x] Networks
-- [x] Devices
-- [x] Connections
-- [x] Discovery
-- [x] Topology
-- [x] HTMX UI
-- [x] Bootstrap UI
+- [x] SQLAlchemy + Flask-Migrate
+- [x] SQLite (PostgreSQL-ready)
+- [x] Database migrations
+- [x] REST API (`/api/v1`)
+- [x] Dashboard with statistics
+- [x] Networks CRUD
+- [x] Devices CRUD
+- [x] Connections CRUD
+- [x] Network Discovery (TCP scanning)
+- [x] Topology visualization (Cytoscape.js)
+- [x] HTMX dynamic UI
+- [x] Bootstrap 5 UI
 
-### Следующие этапы
+### ✅ Iteration 2 — Interfaces/IP/Ports/Connections (Complete)
 
-1. API-side filtering/sorting/pagination для Devices.
-2. Асинхронный Discovery.
-3. Discovery status API.
-4. Monitoring engine.
-5. `/api/v1/stats`.
-6. Sites CRUD.
-7. Улучшение Services/Ports UI.
-8. Расширение Topology.
-9. Интеграции MikroTik / Proxmox.
-10. PostgreSQL deployment.
+- [x] Interface model
+- [x] IPAddress model (normalized)
+- [x] Port model with Service associations
+- [x] Service model
+- [x] Connection model
+- [x] Cascading relationships
+- [x] Discovery synchronization
+- [x] Device Details: Interfaces/IP section
+- [x] Device Details: Services section
+- [x] Device Details: Connections section
+- [x] Web UI for all new models
+
+### ✅ Services & API Enhancements (Complete)
+
+- [x] API-side filtering/sorting/pagination для Devices
+- [x] Standard service names and detection
+- [x] Web URL generation for services
+- [x] Quick web access (Open buttons)
+- [x] Services terminology in UI
+- [x] Device Types: LXC, VM, ZigBee
+- [x] Device cards UI polish (3-column grid, full Services list)
+
+### ✅ Iteration 3 — Monitoring Engine (Complete)
+
+- [x] MonitoringService with ICMP ping + TCP fallback
+- [x] APScheduler integration (background periodic tasks)
+- [x] Automatic device availability checks (every 5 minutes)
+- [x] Auto-update Device.is_active based on reachability
+- [x] Configurable monitoring interval and enable/disable
+- [x] Port Import API (implemented, not committed)
+
+### 📋 Next Steps
+
+1. **Async Discovery** — Background tasks with status API and progress tracking
+2. **Dashboard Stats API** — `/api/v1/stats` aggregate endpoint
+3. **Sites CRUD UI** — Dedicated page for Sites management
+4. **Service Detection** — Enhanced automatic service identification
+5. **Topology Enhancements** — Layouts, filters, export
+6. **Infrastructure Integrations** — MikroTik, Proxmox, Docker APIs
+7. **PostgreSQL Deployment** — Production database setup
+8. **Multi-user & RBAC** — Authentication and authorization
+9. **Monitoring History** — Store availability checks history
+10. **Alert System** — Notifications on device status changes
+
+### 🔮 Future (v2.0+)
+
+- Asset Management
+- Rack Management
+- SNMP/LLDP/CDP support
+- Syslog server
+- Alert system
+- Mobile app
+- Plugin marketplace
 
 ## 18. AI-assisted development
 
@@ -478,22 +592,34 @@ MIT. См. `/LICENSE`.
 
 ## 21. Project status
 
-NetMap находится в активной разработке. Текущая версия уже предоставляет рабочий inventory/discovery Web UI для основных объектов инфраструктуры:
+NetMap находится в активной разработке. Текущая версия (**0.3.0-dev**) предоставляет полнофункциональный inventory/discovery/monitoring Web UI для сетевой инфраструктуры:
 
 ```text
 Dashboard
    │
-   ├── Networks ── Discovery
+   ├── Networks ── Discovery (TCP scanning)
    │
-   ├── Devices
+   ├── Devices (41 устройств)
    │      ├── Interfaces
-   │      ├── IP addresses
-   │      ├── Ports
+   │      ├── IP addresses (71 IP)
+   │      ├── Services/Ports (71 портов, 8 сервисов)
    │      └── Connections
    │
-   ├── Connections
+   ├── Connections (device-to-device)
    │
-   └── Topology
+   └── Topology (Cytoscape graph)
 ```
 
-Следующая крупная цель — перейти от inventory/discovery к полноценному мониторингу и автоматическому обновлению карты инфраструктуры.
+**Завершено:**
+- ✅ Iteration 1: Foundation
+- ✅ Iteration 2: Interfaces/IP/Ports/Connections
+- ✅ Services & API Enhancements
+- ✅ Iteration 3: Monitoring Engine
+
+**Следующая крупная цель:** Async Discovery — фоновые задачи с API статуса и прогрессом сканирования.
+
+**Статус git:**
+- Branch: `main` (опережает `origin/main` на 2 коммита)
+- Uncommitted: 8 modified files, 3 untracked files (Device Types, Services UI, Port Import API)
+
+**Подробнее:** См. `/PROJECT_STATUS.md` и `/CHANGELOG.md`.

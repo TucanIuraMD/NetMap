@@ -1,7 +1,8 @@
 # NetMap Architecture
-**Version:** 1.0  
-**Status:** Approved  
-**Project:** NetMap  
+**Version:** 1.1
+**Status:** Current Implementation
+**Last Updated:** 2026-08-17
+**Project:** NetMap
 **License:** MIT
 
 ---
@@ -155,41 +156,67 @@ Ports may contain web access settings and a generated web URL.
 
 Responsible for discovering devices.
 
-Drivers
+**Current Implementation**
 
-- ICMP
-- ARP
-- Nmap
-- DNS
-- mDNS
-- MAC Vendor
+- TCP port scanning (NetworkScanner)
+- DNS hostname resolution
+- Open port detection
+- Device synchronization (DiscoveryService)
+- Synchronous execution (blocking request)
 
-Future
+**Scan Ports:** 22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443
 
-- SNMP
-- LLDP
-- CDP
+**Architecture:**
+- NetworkScanner — TCP scan implementation (does not write to DB)
+- DiscoveryService — synchronizes scan results with database
+- Creates/updates Device, Interface, IPAddress, Port records
+- Marks missing devices as inactive
 
-Each driver is completely independent.
+**Planned Enhancements:**
 
-Drivers NEVER write to the database.
+- Async/background discovery
+- Discovery progress API
+- Discovery status tracking
+- ICMP discovery
+- ARP table scanning
+- SNMP discovery
+- LLDP/CDP discovery
 
-Drivers return only discovery results.
+Discovery components NEVER write to the database directly.
+
+Discovery returns only scan results.
+
+Database synchronization is handled by DiscoveryService.
 
 ---
 
 ## 5.3 Monitoring
 
-Responsible for monitoring devices.
+**Status:** Implemented
 
-Functions
+**Current Functions:**
 
-- Online
-- Offline
-- Ping
-- Latency
-- Availability
-- Timeline
+- Online/Offline status
+- ICMP Ping (primary method)
+- TCP fallback (to known open ports)
+- Automatic Device.is_active updates
+- Configurable monitoring interval
+
+**Architecture:**
+- APScheduler for periodic checks (default: every 5 minutes)
+- MonitoringService for device availability checks
+- ICMP ping primary, TCP fallback to device's open ports or standard ports
+- Update Device.is_active based on reachability results
+- Reloader-safe scheduler initialization (Flask debug mode compatible)
+- Configurable via MONITORING_ENABLED and MONITORING_INTERVAL_MINUTES
+
+**Planned Enhancements:**
+- Latency measurement
+- Packet loss tracking
+- Response time tracking
+- Monitoring history storage
+- Availability timeline
+- Alert system integration
 
 ---
 
@@ -636,20 +663,32 @@ Topology Update
 
 # 14. Scheduler
 
-Scheduler is independent from Flask.
+**Status:** Implemented (APScheduler)
 
-Responsibilities
+Scheduler runs background periodic tasks.
 
-- Discovery
-- Monitoring
-- Notifications
-- Cleanup
+**Current Implementation:**
+- APScheduler (BackgroundScheduler)
+- Reloader-safe initialization (Flask debug mode compatible)
+- Daemon mode for automatic cleanup
+- Job deduplication (coalesce=True, max_instances=1)
 
-Future
+**Current Responsibilities:**
+
+- Monitoring — Device availability checks (every 5 minutes)
+
+**Planned Responsibilities:**
+
+- Async Discovery execution
+- Cleanup tasks (old logs, inactive devices)
+- Scheduled reports
+- Alert processing
+
+**Future:**
 
 Redis Queue
 
-Celery
+Celery (for heavy workloads)
 
 ---
 
@@ -767,29 +806,45 @@ Repositories never know about Flask.
 
 # 20. Version 1 Scope
 
-Included / planned core functions
+**Completed Functions**
 
 ✅ Device inventory
 
-✅ Network discovery
+✅ Network discovery (TCP scanning)
 
 ✅ Interface and IP inventory
 
-✅ Port inventory
+✅ Port and Service inventory
 
 ✅ Device and port display names
 
-✅ Quick web-service access
+✅ Quick web-service access (Open buttons)
 
-⏳ Availability monitoring
+✅ Device connections
 
-⏳ New-device detection
+✅ Topology visualization (Cytoscape.js)
 
-⏳ Device connections
+✅ Standard service detection
 
-⏳ Topology visualization
+✅ API-side filtering/sorting/pagination
 
-⏳ Infrastructure integrations
+✅ Device Types (including LXC, VM, ZigBee)
+
+✅ Availability monitoring (APScheduler-based, ICMP + TCP fallback)
+
+✅ Port Import API (bulk operations)
+
+**Planned Functions**
+
+⏳ Async discovery (background tasks with progress API)
+
+⏳ Monitoring history (store availability checks over time)
+
+⏳ Alert system (notifications on device status changes)
+
+⏳ Dashboard stats API (aggregate endpoint)
+
+⏳ Infrastructure integrations (MikroTik, Proxmox, Docker)
 
 ---
 

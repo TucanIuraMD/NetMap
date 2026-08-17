@@ -1,6 +1,7 @@
 # NetMap REST API
-**Version:** 1.0
-**Status:** Approved
+**Version:** 1.1
+**Status:** Current Implementation
+**Last Updated:** 2026-08-17
 **Document:** 03_API.md
 
 ---
@@ -139,6 +140,8 @@ OAuth
 
 # 8. API Resources
 
+**Implemented:**
+
 /api/v1/sites
 
 /api/v1/networks
@@ -153,13 +156,33 @@ OAuth
 
 /api/v1/ports
 
-/api/v1/discovery
+/api/v1/connections
 
-/api/v1/monitoring
+/api/v1/networks/<id>/discover
+
+**Partially Implemented:**
+
+/api/v1/imports/ports (port import, implemented but not committed)
+
+**Planned:**
+
+/api/v1/monitoring/status
+
+/api/v1/monitoring/history
+
+/api/v1/monitoring/check
+
+/api/v1/monitoring/stats
+
+/api/v1/discovery/status
+
+/api/v1/discovery/results
 
 /api/v1/history
 
 /api/v1/settings
+
+/api/v1/stats
 
 ---
 
@@ -231,65 +254,71 @@ DELETE
 
 # 11. Devices
 
-GET
+GET /devices
 
-/devices
+**Current Implementation — API-side filtering/sorting/pagination:**
 
-Supports
+**Query Parameters:**
 
-search
+- `search=<term>` — Search by name, hostname, or IP address
+- `network_id=<id>` — Filter by network
+- `device_type=<type>` — Filter by device type (router, switch, server, lxc, vm, etc.)
+- `is_active=<true|false>` — Filter by active status (availability monitoring updates this field)
+- `status=<active|inactive>` — Alias for is_active filter
+- `links=<with|without>` — Filter by connection presence
+- `sort=<field>` — Sort by field: id, name, display_name, hostname, device_type, is_active, created_at, updated_at
+- `order=<asc|desc>` — Sort order (default: asc)
+- `page=<n>` — Page number (default: 1)
+- `per_page=<n>` — Results per page (default: 50, max: 500)
 
-filter
+**Examples:**
 
-sort
+```
+GET /devices?page=1&per_page=50
+GET /devices?is_active=true
+GET /devices?network_id=2
+GET /devices?device_type=server
+GET /devices?search=proxmox
+GET /devices?sort=hostname&page=2
+```
 
-pagination
+**Response:**
 
-Example
-
-GET
-
-/devices?page=1
-
-GET
-
-/devices?status=online
-
-GET
-
-/devices?site=1
-
-GET
-
-/devices?type=router
-
-GET
-
-/devices?hostname=proxmox
-
----
-
-GET
-
-/devices/{id}
-
----
-
-POST
-
-/devices
+```json
+{
+  "devices": [...],
+  "pagination": {
+    "page": 1,
+    "per_page": 50,
+    "total": 41,
+    "pages": 1
+  }
+}
+```
 
 ---
 
-PUT
+GET /devices/{id}
 
-/devices/{id}
+Returns device details with relationships (network, interfaces, ip_addresses, ports, connections).
 
 ---
 
-DELETE
+POST /devices
 
-/devices/{id}
+Create a new device.
+
+---
+
+PUT /devices/{id}
+
+Update device.
+
+---
+
+DELETE /devices/{id}
+
+Delete device (cascades to interfaces, ports, connections).
 
 ---
 
@@ -444,61 +473,77 @@ Deleting a device also removes its associated connections.
 
 # 17. Discovery
 
-POST
+**Current Implementation:**
 
-/discovery/start
+POST /api/v1/networks/{id}/discover
 
-Start discovery.
+Start network discovery (synchronous, blocking).
 
----
+**Request:**
+```json
+{}
+```
 
-POST
+**Response:**
+```json
+{
+  "devices": [...],
+  "discovered": 5,
+  "updated": 3,
+  "inactive": 2
+}
+```
 
-/discovery/stop
+**Discovery Method:**
+- TCP port scanning (ports: 22, 23, 53, 80, 81, 443, 445, 554, 8080, 8443)
+- DNS hostname resolution
+- Open port detection
+- Device/Interface/IPAddress/Port creation and synchronization
+- Inactive device marking
 
-Stop discovery.
+**Limitations:**
+- Synchronous execution (blocks HTTP request until completion)
+- No progress indication
+- May timeout on large networks
 
----
+**Planned:**
 
-GET
+POST /api/v1/discovery/start — Start async discovery (background task)
 
-/discovery/status
+POST /api/v1/discovery/stop — Stop running discovery
 
-Current status.
+GET /api/v1/discovery/status — Check discovery status and progress
 
----
-
-GET
-
-/discovery/results
-
-Latest results.
+GET /api/v1/discovery/results — Get latest discovery results
 
 ---
 
 # 18. Monitoring
 
-POST
+**Status:** Implemented (background service)
 
-/monitoring/start
+**Current Implementation:**
 
----
+Monitoring runs automatically in the background via APScheduler. Device availability is checked every 5 minutes (configurable) and `Device.is_active` is updated automatically.
 
-POST
+**Configuration:**
+- `MONITORING_ENABLED` — Enable/disable monitoring (default: true)
+- `MONITORING_INTERVAL_MINUTES` — Check interval in minutes (default: 5)
 
-/monitoring/stop
+**Monitoring Logic:**
+- ICMP ping (primary method)
+- TCP probe to known open ports (fallback)
+- Updates `Device.is_active` field
 
----
+**Planned Endpoints:**
 
-GET
+GET /monitoring/status — Get monitoring service status
 
-/monitoring/status
+GET /monitoring/history — Get monitoring check history
 
----
+POST /monitoring/check — Trigger immediate check for specific device
 
-GET
-
-/monitoring/history
+GET /monitoring/stats — Get monitoring statistics
 
 ---
 
