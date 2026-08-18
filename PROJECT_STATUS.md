@@ -287,7 +287,7 @@ NetMap/
 1. **Site** — Physical location (Home, Office)
 2. **Network** — Subnet (192.168.x.x/24)
 3. **Device** — Any infrastructure object (Router, Server, VM, etc.)
-4. **Interface** — Network interface (eth0, ens18, discovered)
+4. **Interface** — Network interface (eth0, ens18)
 5. **IPAddress** — IPv4/IPv6 address
 6. **Port** — TCP/UDP port with optional Service link
 7. **Service** — Named service (SSH, HTTP, DNS, etc.)

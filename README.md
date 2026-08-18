@@ -187,7 +187,7 @@ Device ---- Connection ---- Device
 - **Site** — физическая площадка (Home, Office);
 - **Network** — подсеть (192.168.x.x/24);
 - **Device** — любое сетевое устройство;
-- **Interface** — сетевой интерфейс (eth0, ens18, discovered);
+- **Interface** — сетевой интерфейс (eth0, ens18);
 - **IPAddress** — IPv4/IPv6 адрес;
 - **Port** — TCP/UDP порт с опциональной привязкой к Service;
 - **Service** — именованный сервис (SSH, HTTP, DNS и т.д.);
