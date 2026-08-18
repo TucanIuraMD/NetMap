@@ -1,13 +1,17 @@
 {% import "_macros.html" as macros %}
-<div class="d-flex justify-content-between align-items-center mb-2">
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
   <h6 class="mb-0"><i class="bi bi-hdd-network"></i> Services ({{ ports|length }})</h6>
-  <div>
-    <button type="button" class="btn btn-sm btn-outline-secondary"
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    {% if error %}
+    <span class="small text-danger" role="status"><i class="bi bi-x-circle"></i> Scan failed</span>
+    {% elif scan_open is defined and scan_open is not none %}
+    <span class="small text-success" role="status"><i class="bi bi-check-circle"></i> Scan complete — {{ scan_open }} open</span>
+    {% endif %}
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-nm-scan
             hx-post="{{ url_for('web.devices.scan_ports', device_id=device.id) }}"
             hx-target="#device-ports-section"
             hx-swap="innerHTML"
             data-nm-confirm="Сканировать 40 известных TCP-портов устройства?">
-      <span class="htmx-indicator spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
       <i class="bi bi-broadcast"></i> Scan Ports
     </button>
     <button type="button" class="btn btn-sm btn-outline-primary"
@@ -42,7 +46,7 @@
         </td>
         <td class="text-end">
           <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport">
               <i class="bi bi-three-dots"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">

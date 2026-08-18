@@ -757,24 +757,31 @@ def delete_ip_address(device_id: int, ip_address_id: int):
 # --- Ports CRUD (device-scoped) ---
 
 
-def _ports_section(device_id: int, error: str | None = None) -> str:
+def _ports_section(
+    device_id: int,
+    error: str | None = None,
+    scan_open: int | None = None,
+) -> str:
     context = _device_details_context(device_id)
     return render_template(
         "devices/_ports_section.html",
         device=context["device"],
         ports=context["ports"],
         error=error,
+        scan_open=scan_open,
     )
 
 
 @devices_bp.post("/<int:device_id>/ports/scan")
 def scan_ports(device_id: int):
     try:
-        api_post(f"/devices/{device_id}/ports/scan", {})
+        result = api_post(f"/devices/{device_id}/ports/scan", {})
     except ApiError as exc:
         return _ports_section(device_id, error=exc.message), exc.status_code
 
-    return _ports_section(device_id), 200
+    return _ports_section(
+        device_id, scan_open=len(result.get("open_ports") or [])
+    ), 200
 
 
 @devices_bp.get("/<int:device_id>/ports/new")

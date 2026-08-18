@@ -71,6 +71,14 @@
     }
   });
 
+  document.body.addEventListener("htmx:beforeRequest", function (evt) {
+    const elt = evt.detail.elt;
+    if (!elt || !elt.matches("[data-nm-scan]")) return;
+    elt.disabled = true;
+    elt.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span> Scanning ports...';
+  });
+
   document.body.addEventListener("htmx:responseError", function (evt) {
     showToast("Ошибка запроса (" + evt.detail.xhr.status + ")", "danger");
   });
