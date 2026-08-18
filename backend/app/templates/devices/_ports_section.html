@@ -1,12 +1,25 @@
 {% import "_macros.html" as macros %}
 <div class="d-flex justify-content-between align-items-center mb-2">
   <h6 class="mb-0"><i class="bi bi-hdd-network"></i> Services ({{ ports|length }})</h6>
-  <button type="button" class="btn btn-sm btn-outline-primary"
-          hx-get="{{ url_for('web.devices.new_port_form', device_id=device.id) }}"
-          hx-target="#nm-modal-content">
-    <i class="bi bi-plus-lg"></i> Add Port
-  </button>
+  <div>
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            hx-post="{{ url_for('web.devices.scan_ports', device_id=device.id) }}"
+            hx-target="#device-ports-section"
+            hx-swap="innerHTML"
+            data-nm-confirm="Сканировать 40 известных TCP-портов устройства?">
+      <span class="htmx-indicator spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+      <i class="bi bi-broadcast"></i> Scan Ports
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-primary"
+            hx-get="{{ url_for('web.devices.new_port_form', device_id=device.id) }}"
+            hx-target="#nm-modal-content">
+      <i class="bi bi-plus-lg"></i> Add Port
+    </button>
+  </div>
 </div>
+{% if error %}
+<div class="alert alert-danger py-2" role="alert">{{ error }}</div>
+{% endif %}
 {% if ports %}
 <div class="table-responsive">
   <table class="table table-sm nm-table">

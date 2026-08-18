@@ -17,6 +17,7 @@ from .web import web_bp
 from .web.api_client import ApiError
 from .scheduler import init_scheduler, should_start_scheduler
 from .services.discovery_job_manager import DiscoveryJobManager
+from .services.port_scanner import PortScannerService
 
 
 def create_app() -> Flask:
@@ -30,6 +31,10 @@ def create_app() -> Flask:
         init_scheduler(app)
 
     app.extensions["discovery_job_manager"] = DiscoveryJobManager(app)
+    app.extensions["port_scanner_service"] = PortScannerService(
+        timeout=app.config["PORT_SCAN_TIMEOUT"],
+        concurrency=app.config["PORT_SCAN_CONCURRENCY"],
+    )
 
     app.register_blueprint(api_v1, url_prefix="/api/v1")
     app.register_blueprint(web_bp)

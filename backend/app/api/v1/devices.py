@@ -1,10 +1,14 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import func, or_, select
 
 from ...extensions import db
 from ...models.connection import Connection
 from ...models.device import Device
 from ...models.network import Network
+from ...services.port_scanner import (
+    NoIpAddressError,
+    PortScanConflictError,
+)
 
 
 devices_bp = Blueprint("devices", __name__, url_prefix="/devices")
@@ -278,3 +282,33 @@ def delete_device(device_id: int):
     db.session.commit()
 
     return "", 204
+
+
+@devices_bp.post("/<int:device_id>/ports/scan")
+def scan_device_ports(device_id: int):
+    """Scan a single device's well-known TCP ports and sync results."""
+    device = db.session.get(Device, device_id)
+
+    if device is None:
+        return jsonify({"error": "Device not found"}), 404
+
+    service = current_app.extensions["port_scanner_service"]
+
+    try:
+        result = service.scan_device(device)
+    except NoIpAddressError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except PortScanConflictError as exc:
+        return jsonify({"error": str(exc)}), 409
+
+    return jsonify(
+        {
+            "device_id": result.device_id,
+            "ip_address": result.ip_address,
+            "ports_scanned": result.ports_scanned,
+            "open_ports": result.open_ports,
+            "elapsed_ms": result.elapsed_ms,
+            "created": result.created,
+            "updated": result.updated,
+        }
+    )

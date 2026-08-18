@@ -35,3 +35,11 @@ class Config:
     DISCOVERY_WORKERS = int(
         os.getenv("DISCOVERY_WORKERS", "50")
     )
+
+    PORT_SCAN_TIMEOUT = float(
+        os.getenv("PORT_SCAN_TIMEOUT", "1.0")
+    )
+
+    PORT_SCAN_CONCURRENCY = int(
+        os.getenv("PORT_SCAN_CONCURRENCY", "25")
+    )
