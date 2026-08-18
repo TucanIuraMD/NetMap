@@ -108,26 +108,46 @@ class DiscoveryService:
 
         return None
 
+    _DISCOVERED_IFACE_NAME = "eth0"
+    _DISCOVERED_IFACE_TYPE = "ethernet"
+    _LEGACY_IFACE_NAME = "discovered"
+
     @staticmethod
     def _get_or_create_interface(device: Device) -> Interface:
         interface = (
             Interface.query
             .filter_by(
                 device_id=device.id,
-                name="discovered",
+                name=DiscoveryService._DISCOVERED_IFACE_NAME,
             )
             .first()
         )
 
-        if interface is None:
-            interface = Interface(
+        if interface is not None:
+            return interface
+
+        legacy = (
+            Interface.query
+            .filter_by(
                 device_id=device.id,
-                name="discovered",
-                interface_type="unknown",
-                is_active=True,
+                name=DiscoveryService._LEGACY_IFACE_NAME,
             )
-            db.session.add(interface)
-            db.session.flush()
+            .first()
+        )
+
+        if legacy is not None:
+            legacy.name = DiscoveryService._DISCOVERED_IFACE_NAME
+            legacy.interface_type = DiscoveryService._DISCOVERED_IFACE_TYPE
+            return legacy
+
+        interface = Interface(
+            device_id=device.id,
+            name=DiscoveryService._DISCOVERED_IFACE_NAME,
+            interface_type=DiscoveryService._DISCOVERED_IFACE_TYPE,
+            is_active=True,
+        )
+        db.session.add(interface)
+        db.session.flush()
 
         return interface
 
